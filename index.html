@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Storeman Inventory</title>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:#f4f6f8;
+  color:#222;
+}
+
+header{
+  background:#17324d;
+  color:white;
+  padding:18px;
+  text-align:center;
+}
+
+header h1{margin:0;font-size:24px}
+header p{margin:5px 0 0;font-size:13px}
+
+.container{
+  max-width:1100px;
+  margin:auto;
+  padding:15px;
+}
+
+.cards{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;
+  margin-bottom:20px;
+}
+
+.card{
+  background:white;
+  padding:18px;
+  border-radius:12px;
+  box-shadow:0 2px 8px #0001;
+}
+
+.card h3{
+  margin:0 0 8px;
+  font-size:14px;
+  color:#666;
+}
+
+.card strong{
+  font-size:25px;
+}
+
+section{
+  background:white;
+  padding:18px;
+  margin-bottom:18px;
+  border-radius:12px;
+  box-shadow:0 2px 8px #0001;
+}
+
+h2{
+  margin-top:0;
+  color:#17324d;
+}
+
+.form{
+  display:grid;
+  grid-template-columns:2fr 1fr 1fr 1fr auto;
+  gap:10px;
+}
+
+input,select,button{
+  padding:11px;
+  border-radius:7px;
+  border:1px solid #ccc;
+  font-size:14px;
+}
+
+button{
+  border:0;
+  background:#17324d;
+  color:white;
+  cursor:pointer;
+}
+
+button:hover{
+  opacity:.9;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:12px;
+}
+
+th,td{
+  padding:11px;
+  border-bottom:1px solid #eee;
+  text-align:left;
+}
+
+th{
+  background:#f1f3f5;
+}
+
+.low{
+  color:#c62828;
+  font-weight:bold;
+}
+
+.ok{
+  color:#2e7d32;
+  font-weight:bold;
+}
+
+.delete{
+  background:#c62828;
+}
+
+@media(max-width:800px){
+  .cards{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+  .form{
+    grid-template-columns:1fr;
+  }
+
+  table{
+    font-size:13px;
+  }
+
+  th,td{
+    padding:8px;
+  }
+}
+
+@media(max-width:500px){
+  .cards{
+    grid-template-columns:1fr 1fr;
+  }
+
+  header h1{
+    font-size:20px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>📦 Storeman Inventory System</h1>
+  <p>Stock Management Dashboard</p>
+</header>
+
+<div class="container">
+
+  <div class="cards">
+
+    <div class="card">
+      <h3>Total Materials</h3>
+      <strong id="totalMaterials">0</strong>
+    </div>
+
+    <div class="card">
+      <h3>Total Stock</h3>
+      <strong id="totalStock">0</strong>
+    </div>
+
+    <div class="card">
+      <h3>Low Stock</h3>
+      <strong id="lowStock">0</strong>
+    </div>
+
+    <div class="card">
+      <h3>Transactions</h3>
+      <strong id="totalTransactions">0</strong>
+    </div>
+
+  </div>
+
+  <section>
+
+    <h2>➕ Add Material</h2>
+
+    <div class="form">
+
+      <input id="materialName"
+             placeholder="Material name">
+
+      <input id="unit"
+             placeholder="Unit">
+
+      <input id="initialStock"
+             type="number"
+             placeholder="Initial stock">
+
+      <input id="minimumStock"
+             type="number"
+             placeholder="Minimum stock">
+
+      <button onclick="addMaterial()">
+        Add
+      </button>
+
+    </div>
+
+  </section>
+
+
+  <section>
+
+    <h2>📥 Stock In / 📤 Stock Out</h2>
+
+    <div class="form">
+
+      <select id="transactionMaterial"></select>
+
+      <input id="quantity"
+             type="number"
+             placeholder="Quantity">
+
+      <select id="transactionType">
+
+        <option value="IN">
+          Stock In
+        </option>
+
+        <option value="OUT">
+          Stock Out
+        </option>
+
+      </select>
+
+      <input id="reference"
+             placeholder="Reference / Note">
+
+      <button onclick="makeTransaction()">
+        Save
+      </button>
+
+    </div>
+
+  </section>
+
+
+  <section>
+
+    <h2>📦 Current Stock</h2>
+
+    <table>
+
+      <thead>
+
+        <tr>
+          <th>Material</th>
+          <th>Unit</th>
+          <th>Stock Balance</th>
+          <th>Minimum</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+
+      </thead>
+
+      <tbody id="stockTable"></tbody>
+
+    </table>
+
+  </section>
+
+
+  <section>
+
+    <h2>📜 Transaction History</h2>
+
+    <table>
+
+      <thead>
+
+        <tr>
+          <th>Date</th>
+          <th>Material</th>
+          <th>Type</th>
+          <th>Quantity</th>
+          <th>Reference</th>
+        </tr>
+
+      </thead>
+
+      <tbody id="historyTable"></tbody>
+
+    </table>
+
+  </section>
+
+</div>
+
+
+<script>
+
+let materials =
+  JSON.parse(localStorage.getItem("materials")) || [];
+
+let transactions =
+  JSON.parse(localStorage.getItem("transactions")) || [];
+
+
+function saveData(){
+
+  localStorage.setItem(
+    "materials",
+    JSON.stringify(materials)
+  );
+
+  localStorage.setItem(
+    "transactions",
+    JSON.stringify(transactions)
+  );
+
+}
+
+
+function addMaterial(){
+
+  const name =
+    document.getElementById("materialName").value.trim();
+
+  const unit =
+    document.getElementById("unit").value.trim();
+
+  const initial =
+    Number(document.getElementById("initialStock").value);
+
+  const minimum =
+    Number(document.getElementById("minimumStock").value);
+
+
+  if(!name || !unit){
+
+    alert("Please enter material name and unit.");
+
+    return;
+  }
+
+
+  if(materials.some(
+    m => m.name.toLowerCase() === name.toLowerCase()
+  )){
+
+    alert("This material already exists.");
+
+    return;
+  }
+
+
+  const material = {
+
+    id:Date.now(),
+
+    name:name,
+
+    unit:unit,
+
+    stock:initial || 0,
+
+    minimum:minimum || 0
+
+  };
+
+
+  materials.push(material);
+
+
+  if(initial > 0){
+
+    transactions.push({
+
+      date:new Date().toLocaleString(),
+
+      material:name,
+
+      type:"IN",
+
+      quantity:initial,
+
+      reference:"Opening Stock"
+
+    });
+
+  }
+
+
+  saveData();
+
+  clearMaterialForm();
+
+  render();
+
+}
+
+
+function clearMaterialForm(){
+
+  document.getElementById("materialName").value="";
+  document.getElementById("unit").value="";
+  document.getElementById("initialStock").value="";
+  document.getElementById("minimumStock").value="";
+
+}
+
+
+function makeTransaction(){
+
+  const id =
+    Number(
+      document.getElementById("transactionMaterial").value
+    );
+
+  const quantity =
+    Number(
+      document.getElementById("quantity").value
+    );
+
+  const type =
+    document.getElementById("transactionType").value;
+
+  const reference =
+    document.getElementById("reference").value;
+
+
+  const material =
+    materials.find(m => m.id === id);
+
+
+  if(!material){
+
+    alert("Please select a material.");
+
+    return;
+  }
+
+
+  if(!quantity || quantity <= 0){
+
+    alert("Enter a valid quantity.");
+
+    return;
+  }
+
+
+  if(type === "OUT" && quantity > material.stock){
+
+    alert("Not enough stock available.");
+
+    return;
+  }
+
+
+  if(type === "IN"){
+
+    material.stock += quantity;
+
+  }else{
+
+    material.stock -= quantity;
+
+  }
+
+
+  transactions.unshift({
+
+    date:new Date().toLocaleString(),
+
+    material:material.name,
+
+    type:type,
+
+    quantity:quantity,
+
+    reference:reference || "-"
+
+  });
+
+
+  saveData();
+
+  document.getElementById("quantity").value="";
+
+  document.getElementById("reference").value="";
+
+  render();
+
+}
+
+
+function deleteMaterial(id){
+
+  const material =
+    materials.find(m => m.id === id);
+
+  if(!material)return;
+
+
+  if(confirm(
+    "Delete " + material.name + "?"
+  )){
+
+    materials =
+      materials.filter(m => m.id !== id);
+
+    saveData();
+
+    render();
+
+  }
+
+}
+
+
+function render(){
+
+  updateDashboard();
+
+  renderMaterialSelect();
+
+  renderStockTable();
+
+  renderHistory();
+
+}
+
+
+function updateDashboard(){
+
+  document.getElementById("totalMaterials")
+    .textContent = materials.length;
+
+
+  document.getElementById("totalStock")
+    .textContent =
+      materials.reduce(
+        (sum,m) => sum + m.stock,
+        0
+      );
+
+
+  document.getElementById("lowStock")
+    .textContent =
+      materials.filter(
+        m => m.stock <= m.minimum
+      ).length;
+
+
+  document.getElementById("totalTransactions")
+    .textContent =
+      transactions.length;
+
+}
+
+
+function renderMaterialSelect(){
+
+  const select =
+    document.getElementById(
+      "transactionMaterial"
+    );
+
+
+  select.innerHTML =
+    '<option value="">Select material</option>';
+
+
+  materials.forEach(m => {
+
+    const option =
+      document.createElement("option");
+
+    option.value = m.id;
+
+    option.textContent =
+      m.name + " (" + m.stock + " " + m.unit + ")";
+
+    select.appendChild(option);
+
+  });
+
+}
+
+
+function renderStockTable(){
+
+  const table =
+    document.getElementById("stockTable");
+
+
+  table.innerHTML="";
+
+
+  materials.forEach(m => {
+
+    const low =
+      m.stock <= m.minimum;
+
+
+    const row =
+      document.createElement("tr");
+
+
+    row.innerHTML = `
+
+      <td>${m.name}</td>
+
+      <td>${m.unit}</td>
+
+      <td><strong>${m.stock}</strong></td>
+
+      <td>${m.minimum}</td>
+
+      <td class="${low ? "low" : "ok"}">
+
+        ${low ? "⚠️ LOW STOCK" : "✓ OK"}
+
+      </td>
+
+      <td>
+
+        <button
+          class="delete"
+          onclick="deleteMaterial(${m.id})">
+
+          Delete
+
+        </button>
+
+      </td>
+
+    `;
+
+
+    table.appendChild(row);
+
+  });
+
+}
+
+
+function renderHistory(){
+
+  const table =
+    document.getElementById(
+      "historyTable"
+    );
+
+
+  table.innerHTML="";
+
+
+  transactions.forEach(t => {
+
+    const row =
+      document.createElement("tr");
+
+
+    row.innerHTML = `
+
+      <td>${t.date}</td>
+
+      <td>${t.material}</td>
+
+      <td>${t.type === "IN"
+        ? "📥 IN"
+        : "📤 OUT"}</td>
+
+      <td>${t.quantity}</td>
+
+      <td>${t.reference}</td>
+
+    `;
+
+
+    table.appendChild(row);
+
+  });
+
+}
+
+
+render();
+
+</script>
+
+</body>
+</html>
