@@ -304,6 +304,10 @@ th{
 
 
 <script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>
+emailjs.init({ publicKey: "8JupT1wuqer_SMq3p" });
+</script>
 
 let materials =
   JSON.parse(localStorage.getItem("materials")) || [];
@@ -490,6 +494,27 @@ function makeTransaction(){
 
 
   saveData();
+
+  // Send transaction notification by EmailJS
+  emailjs.send(
+    "service_1tcp5f8",
+    "template_6tpdips",
+    {
+      material: material.name,
+      type: type,
+      quantity: quantity,
+      reference: reference || "-",
+      date: new Date().toLocaleString(),
+      stock: material.stock
+    }
+  ).then(
+    function(response) {
+      console.log("Email sent successfully:", response.status);
+    },
+    function(error) {
+      console.error("Email failed:", error);
+    }
+  );
 
   document.getElementById("quantity").value="";
 
