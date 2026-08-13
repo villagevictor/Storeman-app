@@ -30,7 +30,7 @@
     .badge-ok { color: #16a34a; font-weight: bold; font-size: 11px; }
     
     .btn-delete { background: #dc2626; color: white; padding: 6px 12px; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; }
-    .status-alert { font-size: 13px; font-weight: bold; margin-top: 10px; text-align: center; padding: 8px; border-radius: 6px; }
+    .status-alert { font-size: 12px; font-weight: bold; margin-top: 10px; text-align: center; padding: 8px; border-radius: 6px; word-break: break-all; }
   </style>
 
   <!-- EmailJS SDK -->
@@ -133,33 +133,31 @@
       localStorage.setItem("transactions", JSON.stringify(transactions));
     }
 
-    // Low Stock ከሆነ ኢሜይል የሚልክ የወል ፈንክሽን
     async function sendLowStockEmail(material, type, quantity, reference, statusElement) {
       statusElement.style.color = "#d97706";
-      statusElement.textContent = "⏳ Low stock detected! Sending email alert...";
+      statusElement.textContent = "⏳ Sending email...";
+
+      const templateParams = {
+        material: String(material.name || ''),
+        type: String(type || ''),
+        quantity: String(quantity || 0),
+        reference: String(reference || '-'),
+        date: new Date().toLocaleString(),
+        stock: String(material.stock || 0),
+        minimum: String(material.minimum || 0)
+      };
 
       try {
-        await emailjs.send(
-          "service_1tcp5f8",
-          "template_6tpdips",
-          {
-            material: material.name,
-            type: type,
-            quantity: quantity,
-            reference: reference || "-",
-            date: new Date().toLocaleString(),
-            stock: material.stock,
-            minimum: material.minimum
-          }
-        );
+        const res = await emailjs.send("service_1tcp5f8", "template_6tpdips", templateParams);
         statusElement.style.color = "#16a34a";
         statusElement.textContent = "✅ Low Stock Warning Email Sent!";
       } catch (error) {
         console.error("EmailJS Error:", error);
         statusElement.style.color = "#dc2626";
-        statusElement.textContent = "❌ Email Failed! Check Internet / EmailJS Keys.";
+        // ትክክለኛውን የስህተት መልእክት እዚህ ያሳየናል
+        const errDetail = error.text || error.message || JSON.stringify(error);
+        statusElement.textContent = "❌ Error: " + errDetail;
       }
-      setTimeout(() => { statusElement.textContent = ""; }, 6000);
     }
 
     async function addMaterial(){
@@ -203,9 +201,8 @@
       clearMaterialForm();
       render();
 
-      // አዲስ ሲገባም መጠኑ ከ minimum በታች ከሆነ ወዲያውኑ ኢሜይል ይላካል!
       if (material.stock <= material.minimum) {
-        await sendLowStockEmail(material, "ADD", initial, "New Low Stock Item Added", addStatus);
+        await sendLowStockEmail(material, "ADD", initial, "New Low Stock Item", addStatus);
       }
     }
 
@@ -261,7 +258,6 @@
       document.getElementById("reference").value = "";
       render();
 
-      // Stock Out ተደርጎ መጠኑ አነስተኛ ከሆነ ኢሜይል ይላካል
       if (material.stock <= material.minimum) {
         await sendLowStockEmail(material, type, quantity, reference, statusMsg);
       }
