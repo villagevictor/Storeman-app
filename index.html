@@ -24,7 +24,7 @@
     input, select { padding: 12px; font-size: 14px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; background-color: #fff; width: 100%; box-sizing: border-box; }
     
     .btn-primary { background-color: #1e3a8a; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; width: 100%; }
-    .btn-report { background-color: #2563eb; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; width: 100%; margin-top: 10px; }
+    .btn-report { background-color: #059669; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; width: 100%; margin-top: 5px; }
     
     table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
     th, td { padding: 10px 6px; text-align: left; border-bottom: 1px solid #f1f5f9; }
@@ -96,8 +96,8 @@
 
   <!-- Email Report Section -->
   <div class="section">
-    <div class="section-title">📊 Periodic Email Report</div>
-    <p style="font-size: 12px; color: #64748b; margin-top: -5px;">Send complete Stock Status and Activity Report to Email.</p>
+    <div class="section-title">📊 Send Stock Report to Email</div>
+    <p style="font-size: 12px; color: #64748b; margin-top: -5px;">Sends current stock summary to your EmailJS account.</p>
     <button class="btn-report" onclick="sendFullReportEmail()">📩 Send Full Report Now</button>
     <div id="reportStatus" class="status-alert"></div>
   </div>
@@ -242,25 +242,27 @@
     async function sendFullReportEmail() {
       const rStatus = document.getElementById("reportStatus");
       rStatus.style.color = "#d97706";
-      rStatus.textContent = "⏳ Generating & Sending Email Report...";
+      rStatus.textContent = "⏳ Sending Report Email...";
 
-      let summary = "STOREMAN REPORT SUMMARY:\n\n";
-      summary += `Total Items: ${materials.length}\n`;
-      summary += `Total Stock Balance: ${materials.reduce((sum,m) => sum + m.stock, 0)}\n\n`;
-      summary += "CURRENT STOCK LIST:\n";
-      materials.forEach(m => {
-        summary += `- ${m.name}: ${m.stock} ${m.unit} (Min: ${m.minimum})\n`;
-      });
+      if(materials.length === 0){
+        rStatus.style.color = "#dc2626";
+        rStatus.textContent = "❌ No materials available to report.";
+        return;
+      }
+
+      // ሪፖርቱን EmailJS Template በሚገበው መልኩ ማዘጋጀት
+      let stockListSummary = materials.map(m => `${m.name}: ${m.stock} ${m.unit}`).join(" | ");
+      let totalStockVal = materials.reduce((sum,m) => sum + m.stock, 0);
 
       const templateParams = {
-        material: "Periodic Summary Report",
+        material: "ALL ITEMS (" + stockListSummary + ")",
         material_name: "FULL STOCK REPORT",
-        unit: "Summary",
-        stock: materials.reduce((sum,m) => sum + m.stock, 0),
+        unit: "Total Items: " + materials.length,
+        stock: totalStockVal,
         minimum: 0,
-        quantity: materials.length,
-        type: "REPORT",
-        reference: summary,
+        quantity: totalStockVal,
+        type: "PERIODIC REPORT",
+        reference: "Total Materials: " + materials.length + " | Total Quantity: " + totalStockVal,
         date: new Date().toLocaleString()
       };
 
