@@ -19,19 +19,18 @@
 
     .form-group { display: flex; flex-direction: column; gap: 12px; }
     input, select { padding: 12px 14px; font-size: 14px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; background-color: #fff; width: 100%; box-sizing: border-box; }
-    input:focus, select:focus { border-color: #1e3a8a; }
-
+    
     .btn-primary { background-color: #1e3a8a; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; font-size: 15px; cursor: pointer; width: 100%; margin-top: 5px; }
     
     table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
     th, td { padding: 10px 6px; text-align: left; border-bottom: 1px solid #f1f5f9; }
     th { color: #475569; font-weight: 600; }
     
-    .badge-low { color: #dc2626; font-weight: bold; font-size: 11px; display: flex; align-items: center; gap: 3px; }
-    .badge-ok { color: #16a34a; font-weight: bold; font-size: 11px; display: flex; align-items: center; gap: 3px; }
+    .badge-low { color: #dc2626; font-weight: bold; font-size: 11px; }
+    .badge-ok { color: #16a34a; font-weight: bold; font-size: 11px; }
     
     .btn-delete { background: #dc2626; color: white; padding: 6px 12px; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; }
-    #statusMessage { font-size: 13px; font-weight: 600; margin-top: 10px; text-align: center; }
+    .status-alert { font-size: 13px; font-weight: bold; margin-top: 10px; text-align: center; padding: 8px; border-radius: 6px; }
   </style>
 
   <!-- EmailJS SDK -->
@@ -67,6 +66,7 @@
       <input type="number" id="minimumStock" placeholder="Minimum stock">
       <button class="btn-primary" onclick="addMaterial()">Add</button>
     </div>
+    <div id="addStatus" class="status-alert"></div>
   </div>
 
   <!-- Stock In / Stock Out Form -->
@@ -82,7 +82,7 @@
       <input type="text" id="reference" placeholder="Reference">
       <button class="btn-primary" onclick="makeTransaction()">Save</button>
     </div>
-    <div id="statusMessage"></div>
+    <div id="statusMessage" class="status-alert"></div>
   </div>
 
   <!-- Current Stock Table -->
@@ -133,11 +133,41 @@
       localStorage.setItem("transactions", JSON.stringify(transactions));
     }
 
-    function addMaterial(){
+    // Low Stock ከሆነ ኢሜይል የሚልክ የወል ፈንክሽን
+    async function sendLowStockEmail(material, type, quantity, reference, statusElement) {
+      statusElement.style.color = "#d97706";
+      statusElement.textContent = "⏳ Low stock detected! Sending email alert...";
+
+      try {
+        await emailjs.send(
+          "service_1tcp5f8",
+          "template_6tpdips",
+          {
+            material: material.name,
+            type: type,
+            quantity: quantity,
+            reference: reference || "-",
+            date: new Date().toLocaleString(),
+            stock: material.stock,
+            minimum: material.minimum
+          }
+        );
+        statusElement.style.color = "#16a34a";
+        statusElement.textContent = "✅ Low Stock Warning Email Sent!";
+      } catch (error) {
+        console.error("EmailJS Error:", error);
+        statusElement.style.color = "#dc2626";
+        statusElement.textContent = "❌ Email Failed! Check Internet / EmailJS Keys.";
+      }
+      setTimeout(() => { statusElement.textContent = ""; }, 6000);
+    }
+
+    async function addMaterial(){
       const name = document.getElementById("materialName").value.trim();
       const unit = document.getElementById("unit").value.trim();
-      const initial = Number(document.getElementById("initialStock").value);
-      const minimum = Number(document.getElementById("minimumStock").value);
+      const initial = Number(document.getElementById("initialStock").value) || 0;
+      const minimum = Number(document.getElementById("minimumStock").value) || 0;
+      const addStatus = document.getElementById("addStatus");
 
       if(!name || !unit){
         alert("Please enter material name and unit.");
@@ -153,8 +183,8 @@
         id: Date.now(),
         name: name,
         unit: unit,
-        stock: initial || 0,
-        minimum: minimum || 0
+        stock: initial,
+        minimum: minimum
       };
 
       materials.push(material);
@@ -172,6 +202,11 @@
       saveData();
       clearMaterialForm();
       render();
+
+      // አዲስ ሲገባም መጠኑ ከ minimum በታች ከሆነ ወዲያውኑ ኢሜይል ይላካል!
+      if (material.stock <= material.minimum) {
+        await sendLowStockEmail(material, "ADD", initial, "New Low Stock Item Added", addStatus);
+      }
     }
 
     function clearMaterialForm(){
@@ -205,7 +240,6 @@
         return;
       }
 
-      // 1. Stock መጠንን መቀነስ ወይም መጨመር
       if(type === "IN"){
         material.stock += quantity;
       } else {
@@ -227,33 +261,9 @@
       document.getElementById("reference").value = "";
       render();
 
-      // 2. 🔥 እቃው ከ minimum stock በታች ወይም እኩል ከሆነ ብቻ LOW STOCK ኢሜይል ይላካል!
+      // Stock Out ተደርጎ መጠኑ አነስተኛ ከሆነ ኢሜይል ይላካል
       if (material.stock <= material.minimum) {
-        statusMsg.style.color = "#d97706";
-        statusMsg.textContent = "⚠️ LOW STOCK ALERT! Sending warning email...";
-
-        try {
-          await emailjs.send(
-            "service_1tcp5f8",
-            "template_6tpdips",
-            {
-              material: material.name,
-              type: type,
-              quantity: quantity,
-              reference: reference || "-",
-              date: newTransaction.date,
-              stock: material.stock,
-              minimum: material.minimum
-            }
-          );
-          statusMsg.style.color = "#16a34a";
-          statusMsg.textContent = "✅ Low stock warning email sent!";
-        } catch (error) {
-          console.error("Email failed:", error);
-          statusMsg.style.color = "#dc2626";
-          statusMsg.textContent = "❌ Failed to send alert email. Check internet connection.";
-        }
-        setTimeout(() => { statusMsg.textContent = ""; }, 5000);
+        await sendLowStockEmail(material, type, quantity, reference, statusMsg);
       }
     }
 
