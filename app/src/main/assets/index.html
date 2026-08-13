@@ -135,26 +135,38 @@
 
     async function sendLowStockEmail(material, type, quantity, reference, statusElement) {
       statusElement.style.color = "#d97706";
-      statusElement.textContent = "⏳ Sending email...";
+      statusElement.textContent = "⏳ Sending email alert...";
 
+      // ሁሉንም ሊሆኑ የሚችሉ የVariable ስሞች እንልካለን (EmailJS Template የትኛውንም ቢጠቀም በትክክል እንዲያገኘው)
       const templateParams = {
-        material: String(material.name || ''),
-        type: String(type || ''),
-        quantity: String(quantity || 0),
-        reference: String(reference || '-'),
-        date: new Date().toLocaleString(),
-        stock: String(material.stock || 0),
-        minimum: String(material.minimum || 0)
+        material: material.name,
+        material_name: material.name,
+        name: material.name,
+        
+        unit: material.unit,
+        
+        stock: material.stock,
+        current_stock: material.stock,
+        balance: material.stock,
+        current_balance: material.stock,
+        
+        minimum: material.minimum,
+        minimum_stock: material.minimum,
+        min_stock: material.minimum,
+        
+        quantity: quantity,
+        type: type,
+        reference: reference || "-",
+        date: new Date().toLocaleString()
       };
 
       try {
-        const res = await emailjs.send("service_g810m8a", "template_6tpdips", templateParams);
+        await emailjs.send("service_g810m8a", "template_6tpdips", templateParams);
         statusElement.style.color = "#16a34a";
         statusElement.textContent = "✅ Low Stock Warning Email Sent!";
       } catch (error) {
         console.error("EmailJS Error:", error);
         statusElement.style.color = "#dc2626";
-        // ትክክለኛውን የስህተት መልእክት እዚህ ያሳየናል
         const errDetail = error.text || error.message || JSON.stringify(error);
         statusElement.textContent = "❌ Error: " + errDetail;
       }
