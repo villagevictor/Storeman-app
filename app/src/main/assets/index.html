@@ -24,8 +24,7 @@
     input, select { padding: 12px; font-size: 14px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; background-color: #fff; width: 100%; box-sizing: border-box; }
     
     .btn-primary { background-color: #1e3a8a; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; width: 100%; }
-    .btn-secondary { background-color: #059669; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; }
-    .btn-outline { background: transparent; border: 1px solid #64748b; color: #334155; padding: 10px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; }
+    .btn-report { background-color: #2563eb; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; width: 100%; margin-top: 10px; }
     
     table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
     th, td { padding: 10px 6px; text-align: left; border-bottom: 1px solid #f1f5f9; }
@@ -37,7 +36,6 @@
     
     .status-alert { font-size: 12px; font-weight: bold; margin-top: 10px; text-align: center; padding: 8px; border-radius: 6px; word-break: break-all; }
 
-    /* Modal Styling for Settings */
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
     .modal-content { background: white; padding: 20px; border-radius: 16px; width: 90%; max-width: 400px; box-sizing: border-box; }
     .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
@@ -96,14 +94,12 @@
     <div id="statusMessage" class="status-alert"></div>
   </div>
 
-  <!-- Data Backup & Export Section -->
+  <!-- Email Report Section -->
   <div class="section">
-    <div class="section-title">💾 Data Backup & Excel Export</div>
-    <div style="display: flex; gap: 10px; margin-top: 5px;">
-      <button class="btn-secondary" style="flex: 1;" onclick="exportToCSV()">📊 Export to CSV</button>
-      <button class="btn-outline" style="flex: 1;" onclick="document.getElementById('importFile').click()">📥 Import CSV</button>
-      <input type="file" id="importFile" accept=".csv" style="display: none;" onchange="importFromCSV(event)">
-    </div>
+    <div class="section-title">📊 Periodic Email Report</div>
+    <p style="font-size: 12px; color: #64748b; margin-top: -5px;">Send complete Stock Status and Activity Report to Email.</p>
+    <button class="btn-report" onclick="sendFullReportEmail()">📩 Send Full Report Now</button>
+    <div id="reportStatus" class="status-alert"></div>
   </div>
 
   <!-- Current Stock Table -->
@@ -152,18 +148,15 @@
         <h2>⚙️ EmailJS Settings</h2>
         <button class="close-btn" onclick="closeSettings()">✖</button>
       </div>
-      <p style="font-size: 12px; color: #64748b; margin-top: -10px; margin-bottom: 15px;">
-        Configure your own EmailJS account credentials below for custom alerts.
-      </p>
       <div class="form-group">
         <label style="font-size: 12px; font-weight: bold;">Public Key</label>
-        <input type="text" id="cfgPublicKey" placeholder="e.g. 8JupT1wuqer_SMq3p">
+        <input type="text" id="cfgPublicKey" placeholder="Public Key">
         
         <label style="font-size: 12px; font-weight: bold;">Service ID</label>
-        <input type="text" id="cfgServiceId" placeholder="e.g. service_g810m8a">
+        <input type="text" id="cfgServiceId" placeholder="Service ID">
         
         <label style="font-size: 12px; font-weight: bold;">Template ID</label>
-        <input type="text" id="cfgTemplateId" placeholder="e.g. template_6tpdips">
+        <input type="text" id="cfgTemplateId" placeholder="Template ID">
         
         <button class="btn-primary" onclick="saveSettings()">Save Configuration</button>
       </div>
@@ -174,7 +167,6 @@
     let materials = JSON.parse(localStorage.getItem("materials")) || [];
     let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
 
-    // Default EmailJS Config
     let emailConfig = JSON.parse(localStorage.getItem("emailConfig")) || {
       publicKey: "8JupT1wuqer_SMq3p",
       serviceId: "service_g810m8a",
@@ -228,15 +220,9 @@
       const templateParams = {
         material: material.name,
         material_name: material.name,
-        name: material.name,
         unit: material.unit,
         stock: material.stock,
-        current_stock: material.stock,
-        balance: material.stock,
-        current_balance: material.stock,
         minimum: material.minimum,
-        minimum_stock: material.minimum,
-        min_stock: material.minimum,
         quantity: quantity,
         type: type,
         reference: reference || "-",
@@ -248,10 +234,43 @@
         statusElement.style.color = "#16a34a";
         statusElement.textContent = "✅ Low Stock Warning Email Sent!";
       } catch (error) {
-        console.error("EmailJS Error:", error);
         statusElement.style.color = "#dc2626";
-        const errDetail = error.text || error.message || JSON.stringify(error);
-        statusElement.textContent = "❌ Error: " + errDetail;
+        statusElement.textContent = "❌ Error: " + (error.text || error.message);
+      }
+    }
+
+    async function sendFullReportEmail() {
+      const rStatus = document.getElementById("reportStatus");
+      rStatus.style.color = "#d97706";
+      rStatus.textContent = "⏳ Generating & Sending Email Report...";
+
+      let summary = "STOREMAN REPORT SUMMARY:\n\n";
+      summary += `Total Items: ${materials.length}\n`;
+      summary += `Total Stock Balance: ${materials.reduce((sum,m) => sum + m.stock, 0)}\n\n`;
+      summary += "CURRENT STOCK LIST:\n";
+      materials.forEach(m => {
+        summary += `- ${m.name}: ${m.stock} ${m.unit} (Min: ${m.minimum})\n`;
+      });
+
+      const templateParams = {
+        material: "Periodic Summary Report",
+        material_name: "FULL STOCK REPORT",
+        unit: "Summary",
+        stock: materials.reduce((sum,m) => sum + m.stock, 0),
+        minimum: 0,
+        quantity: materials.length,
+        type: "REPORT",
+        reference: summary,
+        date: new Date().toLocaleString()
+      };
+
+      try {
+        await emailjs.send(emailConfig.serviceId, emailConfig.templateId, templateParams);
+        rStatus.style.color = "#16a34a";
+        rStatus.textContent = "✅ Full Stock Report Sent to Email!";
+      } catch (error) {
+        rStatus.style.color = "#dc2626";
+        rStatus.textContent = "❌ Error: " + (error.text || error.message);
       }
     }
 
@@ -310,13 +329,8 @@
 
       const material = materials.find(m => m.id === id);
 
-      if(!material){
-        alert("Please select a material.");
-        return;
-      }
-
-      if(!quantity || quantity <= 0){
-        alert("Enter a valid quantity.");
+      if(!material || !quantity || quantity <= 0){
+        alert("Select material and enter valid quantity.");
         return;
       }
 
@@ -325,11 +339,8 @@
         return;
       }
 
-      if(type === "IN"){
-        material.stock += quantity;
-      } else {
-        material.stock -= quantity;
-      }
+      if(type === "IN") material.stock += quantity;
+      else material.stock -= quantity;
 
       transactions.unshift({
         date: new Date().toLocaleString(),
@@ -357,67 +368,6 @@
         saveData();
         render();
       }
-    }
-
-    // Export to CSV Functionality
-    function exportToCSV() {
-      if (materials.length === 0) {
-        alert("No materials available to export.");
-        return;
-      }
-
-      let csvContent = "data:text/csv;charset=utf-8,";
-      csvContent += "Material Name,Unit,Current Stock,Minimum Stock\n";
-
-      materials.forEach(m => {
-        csvContent += `"${m.name}","${m.unit}",${m.stock},${m.minimum}\n`;
-      });
-
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `Storeman_Inventory_${new Date().toISOString().slice(0,10)}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-
-    // Import from CSV Functionality
-    function importFromCSV(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const text = e.target.result;
-        const lines = text.split("\n");
-        let addedCount = 0;
-
-        for (let i = 1; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (!line) continue;
-          
-          const parts = line.split(",").map(p => p.replace(/^"|"$/g, '').trim());
-          if (parts.length >= 4) {
-            const [name, unit, stock, min] = parts;
-            if (name && !materials.some(m => m.name.toLowerCase() === name.toLowerCase())) {
-              materials.push({
-                id: Date.now() + Math.random(),
-                name: name,
-                unit: unit || "Pcs",
-                stock: Number(stock) || 0,
-                minimum: Number(min) || 0
-              });
-              addedCount++;
-            }
-          }
-        }
-
-        saveData();
-        render();
-        alert(`Successfully imported ${addedCount} new materials!`);
-      };
-      reader.readAsText(file);
     }
 
     function render(){

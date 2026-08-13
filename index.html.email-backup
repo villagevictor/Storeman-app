@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Storeman Inventory System</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 15px; background-color: #f1f5f9; color: #1e293b; }
+    h1 { font-size: 20px; font-weight: bold; margin: 0 0 15px 0; display: flex; align-items: center; gap: 8px; color: #0f172a; }
+    .subtitle { font-size: 13px; color: #64748b; font-weight: normal; margin-top: 2px; }
+    
+    .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    .card { background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .card h3 { margin: 0 0 8px 0; font-size: 13px; color: #475569; font-weight: 600; }
+    .card p { margin: 0; font-size: 26px; font-weight: bold; color: #0f172a; }
+
+    .section { background: #fff; padding: 18px; border-radius: 16px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .section-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; color: #0f172a; }
+
+    .form-group { display: flex; flex-direction: column; gap: 12px; }
+    input, select { padding: 12px 14px; font-size: 14px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; background-color: #fff; width: 100%; box-sizing: border-box; }
+    input:focus, select:focus { border-color: #1e3a8a; }
+
+    .btn-primary { background-color: #1e3a8a; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; font-size: 15px; cursor: pointer; width: 100%; margin-top: 5px; }
+    
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+    th, td { padding: 10px 6px; text-align: left; border-bottom: 1px solid #f1f5f9; }
+    th { color: #475569; font-weight: 600; }
+    
+    .badge-low { color: #dc2626; font-weight: bold; font-size: 11px; display: flex; align-items: center; gap: 3px; }
+    .badge-ok { color: #16a34a; font-weight: bold; font-size: 11px; display: flex; align-items: center; gap: 3px; }
+    
+    .btn-delete { background: #dc2626; color: white; padding: 6px 12px; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; }
+    #statusMessage { font-size: 13px; font-weight: 600; margin-top: 10px; text-align: center; }
+  </style>
+
+  <!-- EmailJS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script>
+    (function(){
+      emailjs.init({ publicKey: "8JupT1wuqer_SMq3p" });
+    })();
+  </script>
+</head>
+<body>
+
+  <div style="background:#0f2b48; color:white; padding:15px; margin:-15px -15px 15px -15px;">
+    <h1 style="color:white; margin:0;">📦 Storeman Inventory System</h1>
+    <div class="subtitle" style="color:#cbd5e1;">Stock Management Dashboard</div>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="dashboard">
+    <div class="card"><h3>Total Materials</h3><p id="totalMaterials">0</p></div>
+    <div class="card"><h3>Total Stock</h3><p id="totalStock">0</p></div>
+    <div class="card"><h3>Low Stock</h3><p id="lowStock">0</p></div>
+    <div class="card"><h3>Transactions</h3><p id="totalTransactions">0</p></div>
+  </div>
+
+  <!-- Add Material Form -->
+  <div class="section">
+    <div class="section-title">➕ Add Material</div>
+    <div class="form-group">
+      <input type="text" id="materialName" placeholder="Material name">
+      <input type="text" id="unit" placeholder="Unit">
+      <input type="number" id="initialStock" placeholder="Initial stock">
+      <input type="number" id="minimumStock" placeholder="Minimum stock">
+      <button class="btn-primary" onclick="addMaterial()">Add</button>
+    </div>
+  </div>
+
+  <!-- Stock In / Stock Out Form -->
+  <div class="section">
+    <div class="section-title">📥 Stock In / 📤 Stock Out</div>
+    <div class="form-group">
+      <select id="transactionMaterial"></select>
+      <select id="transactionType">
+        <option value="IN">Stock In 📥</option>
+        <option value="OUT">Stock Out 📤</option>
+      </select>
+      <input type="number" id="quantity" placeholder="Quantity">
+      <input type="text" id="reference" placeholder="Reference">
+      <button class="btn-primary" onclick="makeTransaction()">Save</button>
+    </div>
+    <div id="statusMessage"></div>
+  </div>
+
+  <!-- Current Stock Table -->
+  <div class="section">
+    <div class="section-title">📦 Current Stock</div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Material</th>
+            <th>Unit</th>
+            <th>Stock</th>
+            <th>Min</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="stockTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Transaction History Table -->
+  <div class="section">
+    <div class="section-title">📜 Transaction History</div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Material</th>
+            <th>Type</th>
+            <th>Qty</th>
+            <th>Ref</th>
+          </tr>
+        </thead>
+        <tbody id="historyTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    let materials = JSON.parse(localStorage.getItem("materials")) || [];
+    let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
+
+    function saveData(){
+      localStorage.setItem("materials", JSON.stringify(materials));
+      localStorage.setItem("transactions", JSON.stringify(transactions));
+    }
+
+    function addMaterial(){
+      const name = document.getElementById("materialName").value.trim();
+      const unit = document.getElementById("unit").value.trim();
+      const initial = Number(document.getElementById("initialStock").value);
+      const minimum = Number(document.getElementById("minimumStock").value);
+
+      if(!name || !unit){
+        alert("Please enter material name and unit.");
+        return;
+      }
+
+      if(materials.some(m => m.name.toLowerCase() === name.toLowerCase())){
+        alert("This material already exists.");
+        return;
+      }
+
+      const material = {
+        id: Date.now(),
+        name: name,
+        unit: unit,
+        stock: initial || 0,
+        minimum: minimum || 0
+      };
+
+      materials.push(material);
+
+      if(initial > 0){
+        transactions.unshift({
+          date: new Date().toLocaleString(),
+          material: name,
+          type: "IN",
+          quantity: initial,
+          reference: "Opening Stock"
+        });
+      }
+
+      saveData();
+      clearMaterialForm();
+      render();
+    }
+
+    function clearMaterialForm(){
+      document.getElementById("materialName").value = "";
+      document.getElementById("unit").value = "";
+      document.getElementById("initialStock").value = "";
+      document.getElementById("minimumStock").value = "";
+    }
+
+    async function makeTransaction(){
+      const id = Number(document.getElementById("transactionMaterial").value);
+      const quantity = Number(document.getElementById("quantity").value);
+      const type = document.getElementById("transactionType").value;
+      const reference = document.getElementById("reference").value;
+      const statusMsg = document.getElementById("statusMessage");
+
+      const material = materials.find(m => m.id === id);
+
+      if(!material){
+        alert("Please select a material.");
+        return;
+      }
+
+      if(!quantity || quantity <= 0){
+        alert("Enter a valid quantity.");
+        return;
+      }
+
+      if(type === "OUT" && quantity > material.stock){
+        alert("Not enough stock available.");
+        return;
+      }
+
+      // 1. Stock መጠንን መቀነስ ወይም መጨመር
+      if(type === "IN"){
+        material.stock += quantity;
+      } else {
+        material.stock -= quantity;
+      }
+
+      const newTransaction = {
+        date: new Date().toLocaleString(),
+        material: material.name,
+        type: type,
+        quantity: quantity,
+        reference: reference || "-"
+      };
+
+      transactions.unshift(newTransaction);
+      saveData();
+
+      document.getElementById("quantity").value = "";
+      document.getElementById("reference").value = "";
+      render();
+
+      // 2. 🔥 እቃው ከ minimum stock በታች ወይም እኩል ከሆነ ብቻ LOW STOCK ኢሜይል ይላካል!
+      if (material.stock <= material.minimum) {
+        statusMsg.style.color = "#d97706";
+        statusMsg.textContent = "⚠️ LOW STOCK ALERT! Sending warning email...";
+
+        try {
+          await emailjs.send(
+            "service_1tcp5f8",
+            "template_6tpdips",
+            {
+              material: material.name,
+              type: type,
+              quantity: quantity,
+              reference: reference || "-",
+              date: newTransaction.date,
+              stock: material.stock,
+              minimum: material.minimum
+            }
+          );
+          statusMsg.style.color = "#16a34a";
+          statusMsg.textContent = "✅ Low stock warning email sent!";
+        } catch (error) {
+          console.error("Email failed:", error);
+          statusMsg.style.color = "#dc2626";
+          statusMsg.textContent = "❌ Failed to send alert email. Check internet connection.";
+        }
+        setTimeout(() => { statusMsg.textContent = ""; }, 5000);
+      }
+    }
+
+    function deleteMaterial(id){
+      const material = materials.find(m => m.id === id);
+      if(!material) return;
+      if(confirm("Delete " + material.name + "?")){
+        materials = materials.filter(m => m.id !== id);
+        saveData();
+        render();
+      }
+    }
+
+    function render(){
+      updateDashboard();
+      renderMaterialSelect();
+      renderStockTable();
+      renderHistory();
+    }
+
+    function updateDashboard(){
+      document.getElementById("totalMaterials").textContent = materials.length;
+      document.getElementById("totalStock").textContent = materials.reduce((sum,m) => sum + m.stock, 0);
+      document.getElementById("lowStock").textContent = materials.filter(m => m.stock <= m.minimum).length;
+      document.getElementById("totalTransactions").textContent = transactions.length;
+    }
+
+    function renderMaterialSelect(){
+      const select = document.getElementById("transactionMaterial");
+      select.innerHTML = '';
+      if(materials.length === 0){
+        const opt = document.createElement("option");
+        opt.textContent = "-- Select material --";
+        select.appendChild(opt);
+        return;
+      }
+      materials.forEach(m => {
+        const option = document.createElement("option");
+        option.value = m.id;
+        option.textContent = m.name + " (" + m.stock + " " + m.unit + ")";
+        select.appendChild(option);
+      });
+    }
+
+    function renderStockTable(){
+      const table = document.getElementById("stockTable");
+      table.innerHTML = "";
+      materials.forEach(m => {
+        const low = m.stock <= m.minimum;
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td><b>${m.name}</b></td>
+          <td>${m.unit}</td>
+          <td><b>${m.stock}</b></td>
+          <td>${m.minimum}</td>
+          <td>${low ? '<span class="badge-low">⚠️ LOW STOCK</span>' : '<span class="badge-ok">✓ OK</span>'}</td>
+          <td><button class="btn-delete" onclick="deleteMaterial(${m.id})">Delete</button></td>
+        `;
+        table.appendChild(row);
+      });
+    }
+
+    function renderHistory(){
+      const table = document.getElementById("historyTable");
+      table.innerHTML = "";
+      transactions.forEach(t => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${t.date}</td>
+          <td>${t.material}</td>
+          <td>${t.type === "IN" ? "📥 IN" : "📤 OUT"}</td>
+          <td>${t.quantity}</td>
+          <td>${t.reference}</td>
+        `;
+        table.appendChild(row);
+      });
+    }
+
+    render();
+  </script>
+</body>
+</html>
