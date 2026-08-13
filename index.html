@@ -62,7 +62,7 @@
     <div class="card"><h3>Total Materials</h3><p id="totalMaterials">0</p></div>
     <div class="card"><h3>Total Stock</h3><p id="totalStock">0</p></div>
     <div class="card"><h3>Low Stock</h3><p id="lowStock">0</p></div>
-    <div class="card"><h3>Transactions</h3><p id="totalTransactions">0</p></div>
+    <div class="card"><h3>Today's Actions</h3><p id="totalTransactions">0</p></div>
   </div>
 
   <!-- Add Material Form -->
@@ -88,17 +88,17 @@
         <option value="OUT">Stock Out 📤</option>
       </select>
       <input type="number" id="quantity" placeholder="Quantity">
-      <input type="text" id="reference" placeholder="Reference">
+      <input type="text" id="reference" placeholder="Reference / Receipt No.">
       <button class="btn-primary" onclick="makeTransaction()">Save Transaction</button>
     </div>
     <div id="statusMessage" class="status-alert"></div>
   </div>
 
-  <!-- Email Report Section -->
+  <!-- Daily Summary Email Report Section -->
   <div class="section">
-    <div class="section-title">📊 Send Stock Report to Email</div>
-    <p style="font-size: 12px; color: #64748b; margin-top: -5px;">Sends current stock summary to your EmailJS account.</p>
-    <button class="btn-report" onclick="sendFullReportEmail()">📩 Send Full Report Now</button>
+    <div class="section-title">📊 Daily Movement Summary Report</div>
+    <p style="font-size: 12px; color: #64748b; margin-top: -5px;">Calculate total IN/OUT for today and send to email.</p>
+    <button class="btn-report" onclick="sendDailySummaryEmail()">📩 Send Today's Daily Report</button>
     <div id="reportStatus" class="status-alert"></div>
   </div>
 
@@ -124,12 +124,12 @@
 
   <!-- Transaction History Table -->
   <div class="section">
-    <div class="section-title">📜 Transaction History</div>
+    <div class="section-title">📜 Today's Transactions</div>
     <div style="overflow-x:auto;">
       <table>
         <thead>
           <tr>
-            <th>Date</th>
+            <th>Time</th>
             <th>Material</th>
             <th>Type</th>
             <th>Qty</th>
@@ -239,10 +239,11 @@
       }
     }
 
-    async function sendFullReportEmail() {
+    // የዕለቱን (Daily Summary) ደምሮ ለኢሜይል የሚያዘጋጅ Function
+    async function sendDailySummaryEmail() {
       const rStatus = document.getElementById("reportStatus");
       rStatus.style.color = "#d97706";
-      rStatus.textContent = "⏳ Sending Report Email...";
+      rStatus.textContent = "⏳ Calculating Daily Totals & Sending Email...";
 
       if(materials.length === 0){
         rStatus.style.color = "#dc2626";
@@ -250,26 +251,40 @@
         return;
       }
 
-      // ሪፖርቱን EmailJS Template በሚገበው መልኩ ማዘጋጀት
-      let stockListSummary = materials.map(m => `${m.name}: ${m.stock} ${m.unit}`).join(" | ");
-      let totalStockVal = materials.reduce((sum,m) => sum + m.stock, 0);
+      const todayStr = new Date().toLocaleDateString();
+      let todayTx = transactions.filter(t => new Date(t.timestamp).toLocaleDateString() === todayStr);
+
+      let summaryList = [];
+      let totalOutAll = 0;
+      let totalInAll = 0;
+
+      materials.forEach(m => {
+        let mTx = todayTx.filter(t => t.material === m.name);
+        let inQty = mTx.filter(t => t.type === "IN").reduce((sum, t) => sum + t.quantity, 0);
+        let outQty = mTx.filter(t => t.type === "OUT").reduce((sum, t) => sum + t.quantity, 0);
+
+        totalInAll += inQty;
+        totalOutAll += outQty;
+
+        summaryList.push(`${m.name}: [IN: +${inQty} | OUT: -${outQty} | Current: ${m.stock} ${m.unit}]`);
+      });
 
       const templateParams = {
-        material: "ALL ITEMS (" + stockListSummary + ")",
-        material_name: "FULL STOCK REPORT",
+        material: summaryList.join(" || "),
+        material_name: "DAILY SUMMARY REPORT (" + todayStr + ")",
         unit: "Total Items: " + materials.length,
-        stock: totalStockVal,
+        stock: materials.reduce((sum,m) => sum + m.stock, 0),
         minimum: 0,
-        quantity: totalStockVal,
-        type: "PERIODIC REPORT",
-        reference: "Total Materials: " + materials.length + " | Total Quantity: " + totalStockVal,
+        quantity: "Total Out Today: " + totalOutAll,
+        type: "DAILY SUMMARY",
+        reference: `Today's Total IN: +${totalInAll} | Today's Total OUT: -${totalOutAll}`,
         date: new Date().toLocaleString()
       };
 
       try {
         await emailjs.send(emailConfig.serviceId, emailConfig.templateId, templateParams);
         rStatus.style.color = "#16a34a";
-        rStatus.textContent = "✅ Full Stock Report Sent to Email!";
+        rStatus.textContent = "✅ Daily Summary Report Sent Successfully!";
       } catch (error) {
         rStatus.style.color = "#dc2626";
         rStatus.textContent = "❌ Error: " + (error.text || error.message);
@@ -298,7 +313,8 @@
 
       if(initial > 0){
         transactions.unshift({
-          date: new Date().toLocaleString(),
+          timestamp: new Date().toISOString(),
+          date: new Date().toLocaleTimeString(),
           material: name,
           type: "IN",
           quantity: initial,
@@ -345,7 +361,8 @@
       else material.stock -= quantity;
 
       transactions.unshift({
-        date: new Date().toLocaleString(),
+        timestamp: new Date().toISOString(),
+        date: new Date().toLocaleTimeString(),
         material: material.name,
         type: type,
         quantity: quantity,
@@ -383,7 +400,10 @@
       document.getElementById("totalMaterials").textContent = materials.length;
       document.getElementById("totalStock").textContent = materials.reduce((sum,m) => sum + m.stock, 0);
       document.getElementById("lowStock").textContent = materials.filter(m => m.stock <= m.minimum).length;
-      document.getElementById("totalTransactions").textContent = transactions.length;
+      
+      const todayStr = new Date().toLocaleDateString();
+      const todayCount = transactions.filter(t => new Date(t.timestamp).toLocaleDateString() === todayStr).length;
+      document.getElementById("totalTransactions").textContent = todayCount;
     }
 
     function renderMaterialSelect(){
