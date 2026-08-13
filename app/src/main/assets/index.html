@@ -6,21 +6,26 @@
   <title>Storeman Inventory System</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 15px; background-color: #f1f5f9; color: #1e293b; }
-    h1 { font-size: 20px; font-weight: bold; margin: 0 0 15px 0; display: flex; align-items: center; gap: 8px; color: #0f172a; }
-    .subtitle { font-size: 13px; color: #64748b; font-weight: normal; margin-top: 2px; }
     
+    .header { background: #0f2b48; color: white; padding: 15px; margin: -15px -15px 15px -15px; display: flex; justify-content: space-between; align-items: center; }
+    h1 { font-size: 18px; font-weight: bold; margin: 0; }
+    .subtitle { font-size: 12px; color: #cbd5e1; margin-top: 2px; }
+    .btn-settings { background: #1e3a8a; border: 1px solid #3b82f6; color: white; padding: 6px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+
     .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
     .card { background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .card h3 { margin: 0 0 8px 0; font-size: 13px; color: #475569; font-weight: 600; }
-    .card p { margin: 0; font-size: 26px; font-weight: bold; color: #0f172a; }
+    .card h3 { margin: 0 0 8px 0; font-size: 12px; color: #475569; font-weight: 600; }
+    .card p { margin: 0; font-size: 24px; font-weight: bold; color: #0f172a; }
 
     .section { background: #fff; padding: 18px; border-radius: 16px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .section-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; color: #0f172a; }
+    .section-title { font-size: 16px; font-weight: bold; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; color: #0f172a; }
 
-    .form-group { display: flex; flex-direction: column; gap: 12px; }
-    input, select { padding: 12px 14px; font-size: 14px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; background-color: #fff; width: 100%; box-sizing: border-box; }
+    .form-group { display: flex; flex-direction: column; gap: 10px; }
+    input, select { padding: 12px; font-size: 14px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; background-color: #fff; width: 100%; box-sizing: border-box; }
     
-    .btn-primary { background-color: #1e3a8a; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; font-size: 15px; cursor: pointer; width: 100%; margin-top: 5px; }
+    .btn-primary { background-color: #1e3a8a; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; width: 100%; }
+    .btn-secondary { background-color: #059669; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; }
+    .btn-outline { background: transparent; border: 1px solid #64748b; color: #334155; padding: 10px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; }
     
     table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
     th, td { padding: 10px 6px; text-align: left; border-bottom: 1px solid #f1f5f9; }
@@ -28,24 +33,30 @@
     
     .badge-low { color: #dc2626; font-weight: bold; font-size: 11px; }
     .badge-ok { color: #16a34a; font-weight: bold; font-size: 11px; }
+    .btn-delete { background: #dc2626; color: white; padding: 6px 12px; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; }
     
-    .btn-delete { background: #dc2626; color: white; padding: 6px 12px; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; }
     .status-alert { font-size: 12px; font-weight: bold; margin-top: 10px; text-align: center; padding: 8px; border-radius: 6px; word-break: break-all; }
+
+    /* Modal Styling for Settings */
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
+    .modal-content { background: white; padding: 20px; border-radius: 16px; width: 90%; max-width: 400px; box-sizing: border-box; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .modal-header h2 { margin: 0; font-size: 18px; }
+    .close-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b; }
   </style>
 
   <!-- EmailJS SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-  <script>
-    (function(){
-      emailjs.init({ publicKey: "8JupT1wuqer_SMq3p" });
-    })();
-  </script>
 </head>
 <body>
 
-  <div style="background:#0f2b48; color:white; padding:15px; margin:-15px -15px 15px -15px;">
-    <h1 style="color:white; margin:0;">📦 Storeman Inventory System</h1>
-    <div class="subtitle" style="color:#cbd5e1;">Stock Management Dashboard</div>
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>📦 Storeman System</h1>
+      <div class="subtitle">Stock Management Dashboard</div>
+    </div>
+    <button class="btn-settings" onclick="openSettings()">⚙️ Settings</button>
   </div>
 
   <!-- Dashboard -->
@@ -64,7 +75,7 @@
       <input type="text" id="unit" placeholder="Unit">
       <input type="number" id="initialStock" placeholder="Initial stock">
       <input type="number" id="minimumStock" placeholder="Minimum stock">
-      <button class="btn-primary" onclick="addMaterial()">Add</button>
+      <button class="btn-primary" onclick="addMaterial()">Add Material</button>
     </div>
     <div id="addStatus" class="status-alert"></div>
   </div>
@@ -80,9 +91,19 @@
       </select>
       <input type="number" id="quantity" placeholder="Quantity">
       <input type="text" id="reference" placeholder="Reference">
-      <button class="btn-primary" onclick="makeTransaction()">Save</button>
+      <button class="btn-primary" onclick="makeTransaction()">Save Transaction</button>
     </div>
     <div id="statusMessage" class="status-alert"></div>
+  </div>
+
+  <!-- Data Backup & Export Section -->
+  <div class="section">
+    <div class="section-title">💾 Data Backup & Excel Export</div>
+    <div style="display: flex; gap: 10px; margin-top: 5px;">
+      <button class="btn-secondary" style="flex: 1;" onclick="exportToCSV()">📊 Export to CSV</button>
+      <button class="btn-outline" style="flex: 1;" onclick="document.getElementById('importFile').click()">📥 Import CSV</button>
+      <input type="file" id="importFile" accept=".csv" style="display: none;" onchange="importFromCSV(event)">
+    </div>
   </div>
 
   <!-- Current Stock Table -->
@@ -124,36 +145,98 @@
     </div>
   </div>
 
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>⚙️ EmailJS Settings</h2>
+        <button class="close-btn" onclick="closeSettings()">✖</button>
+      </div>
+      <p style="font-size: 12px; color: #64748b; margin-top: -10px; margin-bottom: 15px;">
+        Configure your own EmailJS account credentials below for custom alerts.
+      </p>
+      <div class="form-group">
+        <label style="font-size: 12px; font-weight: bold;">Public Key</label>
+        <input type="text" id="cfgPublicKey" placeholder="e.g. 8JupT1wuqer_SMq3p">
+        
+        <label style="font-size: 12px; font-weight: bold;">Service ID</label>
+        <input type="text" id="cfgServiceId" placeholder="e.g. service_g810m8a">
+        
+        <label style="font-size: 12px; font-weight: bold;">Template ID</label>
+        <input type="text" id="cfgTemplateId" placeholder="e.g. template_6tpdips">
+        
+        <button class="btn-primary" onclick="saveSettings()">Save Configuration</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let materials = JSON.parse(localStorage.getItem("materials")) || [];
     let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
+
+    // Default EmailJS Config
+    let emailConfig = JSON.parse(localStorage.getItem("emailConfig")) || {
+      publicKey: "8JupT1wuqer_SMq3p",
+      serviceId: "service_g810m8a",
+      templateId: "template_6tpdips"
+    };
+
+    function initEmailJS() {
+      if (emailConfig.publicKey) {
+        emailjs.init({ publicKey: emailConfig.publicKey });
+      }
+    }
+    initEmailJS();
 
     function saveData(){
       localStorage.setItem("materials", JSON.stringify(materials));
       localStorage.setItem("transactions", JSON.stringify(transactions));
     }
 
+    function openSettings() {
+      document.getElementById("cfgPublicKey").value = emailConfig.publicKey || "";
+      document.getElementById("cfgServiceId").value = emailConfig.serviceId || "";
+      document.getElementById("cfgTemplateId").value = emailConfig.templateId || "";
+      document.getElementById("settingsModal").style.display = "flex";
+    }
+
+    function closeSettings() {
+      document.getElementById("settingsModal").style.display = "none";
+    }
+
+    function saveSettings() {
+      const pubKey = document.getElementById("cfgPublicKey").value.trim();
+      const srvId = document.getElementById("cfgServiceId").value.trim();
+      const tmpId = document.getElementById("cfgTemplateId").value.trim();
+
+      if(!pubKey || !srvId || !tmpId) {
+        alert("Please fill in all EmailJS fields.");
+        return;
+      }
+
+      emailConfig = { publicKey: pubKey, serviceId: srvId, templateId: tmpId };
+      localStorage.setItem("emailConfig", JSON.stringify(emailConfig));
+      initEmailJS();
+      closeSettings();
+      alert("Settings saved successfully!");
+    }
+
     async function sendLowStockEmail(material, type, quantity, reference, statusElement) {
       statusElement.style.color = "#d97706";
       statusElement.textContent = "⏳ Sending email alert...";
 
-      // ሁሉንም ሊሆኑ የሚችሉ የVariable ስሞች እንልካለን (EmailJS Template የትኛውንም ቢጠቀም በትክክል እንዲያገኘው)
       const templateParams = {
         material: material.name,
         material_name: material.name,
         name: material.name,
-        
         unit: material.unit,
-        
         stock: material.stock,
         current_stock: material.stock,
         balance: material.stock,
         current_balance: material.stock,
-        
         minimum: material.minimum,
         minimum_stock: material.minimum,
         min_stock: material.minimum,
-        
         quantity: quantity,
         type: type,
         reference: reference || "-",
@@ -161,7 +244,7 @@
       };
 
       try {
-        await emailjs.send("service_g810m8a", "template_6tpdips", templateParams);
+        await emailjs.send(emailConfig.serviceId, emailConfig.templateId, templateParams);
         statusElement.style.color = "#16a34a";
         statusElement.textContent = "✅ Low Stock Warning Email Sent!";
       } catch (error) {
@@ -189,14 +272,7 @@
         return;
       }
 
-      const material = {
-        id: Date.now(),
-        name: name,
-        unit: unit,
-        stock: initial,
-        minimum: minimum
-      };
-
+      const material = { id: Date.now(), name: name, unit: unit, stock: initial, minimum: minimum };
       materials.push(material);
 
       if(initial > 0){
@@ -255,15 +331,13 @@
         material.stock -= quantity;
       }
 
-      const newTransaction = {
+      transactions.unshift({
         date: new Date().toLocaleString(),
         material: material.name,
         type: type,
         quantity: quantity,
         reference: reference || "-"
-      };
-
-      transactions.unshift(newTransaction);
+      });
       saveData();
 
       document.getElementById("quantity").value = "";
@@ -283,6 +357,67 @@
         saveData();
         render();
       }
+    }
+
+    // Export to CSV Functionality
+    function exportToCSV() {
+      if (materials.length === 0) {
+        alert("No materials available to export.");
+        return;
+      }
+
+      let csvContent = "data:text/csv;charset=utf-8,";
+      csvContent += "Material Name,Unit,Current Stock,Minimum Stock\n";
+
+      materials.forEach(m => {
+        csvContent += `"${m.name}","${m.unit}",${m.stock},${m.minimum}\n`;
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Storeman_Inventory_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Import from CSV Functionality
+    function importFromCSV(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const text = e.target.result;
+        const lines = text.split("\n");
+        let addedCount = 0;
+
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          
+          const parts = line.split(",").map(p => p.replace(/^"|"$/g, '').trim());
+          if (parts.length >= 4) {
+            const [name, unit, stock, min] = parts;
+            if (name && !materials.some(m => m.name.toLowerCase() === name.toLowerCase())) {
+              materials.push({
+                id: Date.now() + Math.random(),
+                name: name,
+                unit: unit || "Pcs",
+                stock: Number(stock) || 0,
+                minimum: Number(min) || 0
+              });
+              addedCount++;
+            }
+          }
+        }
+
+        saveData();
+        render();
+        alert(`Successfully imported ${addedCount} new materials!`);
+      };
+      reader.readAsText(file);
     }
 
     function render(){
