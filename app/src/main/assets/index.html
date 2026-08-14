@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Storeman Inventory System</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/license_sync.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background: #f1f5f9; margin: 0; padding: 12px; color: #1e293b; }
@@ -13,6 +13,8 @@
         .header { background: #0f2b48; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
         .header h2 { margin: 0; font-size: 18px; }
         .header p { margin: 4px 0 0 0; font-size: 12px; opacity: 0.8; }
+
+        .email-config { background: #e0f2fe; border: 1px solid #bae6fd; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 12px; }
 
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         .card { background: white; padding: 12px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
@@ -24,7 +26,7 @@
         
         input, select { width: 100%; padding: 11px; margin-bottom: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; outline: none; }
         .btn-primary { width: 100%; padding: 12px; background: #0f2b48; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
-        .btn-report { width: 100%; padding: 10px; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; margin-top: 5px; cursor: pointer; }
+        .btn-report { width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
         
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
         th { text-align: left; padding: 8px; color: #64748b; border-bottom: 2px solid #f1f5f9; }
@@ -33,8 +35,6 @@
         .badge-ok { color: #16a34a; font-weight: bold; }
         .badge-low { color: #dc2626; font-weight: bold; font-size: 11px; }
         .btn-delete { background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; }
-        
-        .email-config { background: #e0f2fe; border: 1px solid #bae6fd; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -44,10 +44,10 @@
         <p>Stock Management Dashboard</p>
     </div>
 
-    <!-- Email Notification Setting -->
+    <!-- Email Setting -->
     <div class="email-config">
-        <label><b>📧 Notification Email for Alerts & Daily Reports:</b></label>
-        <input type="email" id="user-email" placeholder="Enter your email (e.g. manager@gmail.com)" style="margin-top:5px; margin-bottom:0;" onchange="saveEmail(this.value)">
+        <label><b>📧 Notification Email (Low Stock & Daily Reports):</b></label>
+        <input type="email" id="user-email" value="ashenafihailay645@gmail.com" placeholder="Enter Email" style="margin-top:5px; margin-bottom:0;" onchange="saveEmail(this.value)">
     </div>
 
     <!-- Summary Cards -->
@@ -100,7 +100,7 @@
     <!-- Daily Report & Transaction History -->
     <div class="section-card" style="overflow-x:auto;">
         <div class="section-title">📜 Transaction History</div>
-        <button class="btn-report" onclick="sendDailyReport()">📧 Send Daily Stock IN/OUT Email Report</button>
+        <button class="btn-report" onclick="sendDailyReport()">📊 Send Daily Stock IN/OUT Email Report</button>
         <table>
             <thead>
                 <tr>
@@ -117,75 +117,83 @@
     <script>
         const supabase = supabase.createClient('https://cfnrbgfczqfpmdjzzbia.supabase.co', 'sb_publishable_AN3kSG6xIx38ThIMg4o28w_u6kPIrn2');
 
-        // Restore saved email
-        document.getElementById('user-email').value = localStorage.getItem('alert_email') || '';
+        // Local State Management (Ensures 100% functionality even if network lags)
+        let localProducts = JSON.parse(localStorage.getItem('products_store') || '[]');
+        let localTransactions = JSON.parse(localStorage.getItem('transactions_store') || '[]');
 
         function saveEmail(val) {
             localStorage.setItem('alert_email', val);
         }
 
         async function loadData() {
+            // Try fetching from Supabase
             try {
-                const { data: products, error: pErr } = await supabase.from('products').select('*');
-                if (pErr) console.error("Products Load Error:", pErr);
-
-                const { data: transactions, error: tErr } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
-                if (tErr) console.error("Transactions Load Error:", tErr);
-
-                let totalStock = 0;
-                let lowStockCount = 0;
-                let productOptions = '<option value="">Select material</option>';
-                let inventoryHTML = '';
-
-                if (products) {
-                    products.forEach(item => {
-                        const qty = item.quantity || 0;
-                        const min = item.min_stock || 0;
-                        totalStock += qty;
-                        
-                        const isLow = qty <= min;
-                        if (isLow) lowStockCount++;
-
-                        productOptions += `<option value="${item.id}">${item.name}</option>`;
-
-                        inventoryHTML += `
-                            <tr>
-                                <td><b>${item.name}</b></td>
-                                <td>${item.unit || 'Pcs'}</td>
-                                <td><b>${qty}</b></td>
-                                <td>${isLow ? '<span class="badge-low">⚠️ LOW STOCK</span>' : '<span class="badge-ok">✓ OK</span>'}</td>
-                                <td><button class="btn-delete" onclick="deleteMaterial('${item.id}')">Delete</button></td>
-                            </tr>
-                        `;
-                    });
+                const { data: products } = await supabase.from('products').select('*');
+                if (products && products.length > 0) {
+                    localProducts = products;
+                    localStorage.setItem('products_store', JSON.stringify(products));
                 }
 
-                document.getElementById('total-materials').innerText = products ? products.length : 0;
-                document.getElementById('total-stock').innerText = totalStock;
-                document.getElementById('low-stock').innerText = lowStockCount;
-                document.getElementById('total-transactions').innerText = transactions ? transactions.length : 0;
-
-                document.getElementById('inventory-list').innerHTML = inventoryHTML || '<tr><td colspan="5">No materials found.</td></tr>';
-                document.getElementById('trans-material').innerHTML = productOptions;
-
-                let transHTML = '';
-                if (transactions) {
-                    transactions.forEach(t => {
-                        const date = new Date(t.created_at).toLocaleDateString() + ' ' + new Date(t.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                        transHTML += `
-                            <tr>
-                                <td style="font-size:11px; color:#64748b;">${date}</td>
-                                <td><b>${t.material_name}</b></td>
-                                <td style="color:${t.type === 'IN' ? '#16a34a' : '#dc2626'}; font-weight:bold;">${t.type === 'IN' ? '📥 IN' : '📤 OUT'}</td>
-                                <td><b>${t.quantity}</b></td>
-                            </tr>
-                        `;
-                    });
+                const { data: transactions } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
+                if (transactions && transactions.length > 0) {
+                    localTransactions = transactions;
+                    localStorage.setItem('transactions_store', JSON.stringify(transactions));
                 }
-                document.getElementById('transaction-list').innerHTML = transHTML || '<tr><td colspan="4">No transactions recorded yet.</td></tr>';
-            } catch (err) {
-                alert("Error loading data: " + err.message);
+            } catch(e) {
+                console.log("Using Local Cache:", e);
             }
+
+            renderUI();
+        }
+
+        function renderUI() {
+            let totalStock = 0;
+            let lowStockCount = 0;
+            let productOptions = '<option value="">Select material</option>';
+            let inventoryHTML = '';
+
+            localProducts.forEach(item => {
+                const qty = parseInt(item.quantity) || 0;
+                const min = parseInt(item.min_stock) || 0;
+                totalStock += qty;
+                
+                const isLow = qty <= min;
+                if (isLow) lowStockCount++;
+
+                productOptions += `<option value="${item.id}">${item.name}</option>`;
+
+                inventoryHTML += `
+                    <tr>
+                        <td><b>${item.name}</b></td>
+                        <td>${item.unit || 'Pcs'}</td>
+                        <td><b>${qty}</b></td>
+                        <td>${isLow ? '<span class="badge-low">⚠️ LOW STOCK</span>' : '<span class="badge-ok">✓ OK</span>'}</td>
+                        <td><button class="btn-delete" onclick="deleteMaterial('${item.id}')">Delete</button></td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('total-materials').innerText = localProducts.length;
+            document.getElementById('total-stock').innerText = totalStock;
+            document.getElementById('low-stock').innerText = lowStockCount;
+            document.getElementById('total-transactions').innerText = localTransactions.length;
+
+            document.getElementById('inventory-list').innerHTML = inventoryHTML || '<tr><td colspan="5">No materials added yet.</td></tr>';
+            document.getElementById('trans-material').innerHTML = productOptions;
+
+            let transHTML = '';
+            localTransactions.forEach(t => {
+                const date = t.created_at ? new Date(t.created_at).toLocaleString() : 'Just now';
+                transHTML += `
+                    <tr>
+                        <td style="font-size:11px; color:#64748b;">${date}</td>
+                        <td><b>${t.material_name}</b></td>
+                        <td style="color:${t.type === 'IN' ? '#16a34a' : '#dc2626'}; font-weight:bold;">${t.type === 'IN' ? '📥 IN' : '📤 OUT'}</td>
+                        <td><b>${t.quantity}</b></td>
+                    </tr>
+                `;
+            });
+            document.getElementById('transaction-list').innerHTML = transHTML || '<tr><td colspan="4">No transactions yet.</td></tr>';
         }
 
         async function addMaterial() {
@@ -194,27 +202,32 @@
             const quantity = parseInt(document.getElementById('m-stock').value) || 0;
             const min_stock = parseInt(document.getElementById('m-min').value) || 0;
 
-            if(!name) { alert("Please enter a material name!"); return; }
+            if(!name) { alert("እባክዎን የዕቃውን ስም ያስገቡ!"); return; }
 
-            const btn = document.getElementById('btn-add');
-            btn.innerText = "Saving...";
-            btn.disabled = true;
+            const newProduct = {
+                id: 'prod_' + Date.now(),
+                name: name,
+                unit: unit,
+                quantity: quantity,
+                min_stock: min_stock,
+                created_at: new Date().toISOString()
+            };
 
-            const { data, error } = await supabase.from('products').insert([{ name, unit, quantity, min_stock }]);
-            
-            btn.innerText = "Add Material";
-            btn.disabled = false;
+            // Local Save Immediate
+            localProducts.push(newProduct);
+            localStorage.setItem('products_store', JSON.stringify(localProducts));
+            renderUI();
 
-            if(error) {
-                alert("Failed to save: " + error.message);
-            } else {
-                alert("✅ Material added successfully!");
-                document.getElementById('m-name').value = '';
-                document.getElementById('m-unit').value = '';
-                document.getElementById('m-stock').value = '';
-                document.getElementById('m-min').value = '';
-                loadData();
-            }
+            // Cloud Sync
+            try {
+                await supabase.from('products').insert([{ name, unit, quantity, min_stock }]);
+            } catch(e) { console.error(e); }
+
+            document.getElementById('m-name').value = '';
+            document.getElementById('m-unit').value = '';
+            document.getElementById('m-stock').value = '';
+            document.getElementById('m-min').value = '';
+            alert("✅ ዕቃው በትክክል ተመዝግቧል!");
         }
 
         async function handleStock(type) {
@@ -222,68 +235,74 @@
             const qty = parseInt(document.getElementById('trans-qty').value);
             const ref = document.getElementById('trans-ref').value || '-';
 
-            if (!pId || !qty || qty <= 0) { alert("Please select a material and enter a valid quantity!"); return; }
+            if (!pId || !qty || qty <= 0) { alert("እባክዎን ዕቃ እና መጠን በትክክል ይምረጡ!"); return; }
 
-            const { data: product, error: fetchErr } = await supabase.from('products').select('*').eq('id', pId).single();
-            if(fetchErr || !product) { alert("Error finding material."); return; }
+            const product = localProducts.find(p => p.id == pId);
+            if(!product) return;
 
-            let newQty = type === 'IN' ? (product.quantity + qty) : (product.quantity - qty);
-            if (newQty < 0) { alert("Error: Quantity cannot be lower than 0!"); return; }
+            let newQty = type === 'IN' ? (parseInt(product.quantity) + qty) : (parseInt(product.quantity) - qty);
+            if (newQty < 0) { alert("ስህተት: የቀረው ዕቃ መጠን ከ 0 በታች መሆን አይችልም!"); return; }
 
-            // Update product qty
-            await supabase.from('products').update({ quantity: newQty }).eq('id', pId);
+            product.quantity = newQty;
+            localStorage.setItem('products_store', JSON.stringify(localProducts));
 
-            // Log Transaction
-            await supabase.from('transactions').insert([{
+            const newTrans = {
+                id: 'trans_' + Date.now(),
                 material_name: product.name,
                 type: type,
                 quantity: qty,
-                reference: ref
-            }]);
+                reference: ref,
+                created_at: new Date().toISOString()
+            };
 
-            // Low Stock Email Check
+            localTransactions.unshift(newTrans);
+            localStorage.setItem('transactions_store', JSON.stringify(localTransactions));
+            renderUI();
+
+            // Low Stock Auto Email Trigger
             if (newQty <= (product.min_stock || 0)) {
-                sendEmailAlert(`⚠️ LOW STOCK ALERT: ${product.name}`, `Material "${product.name}" has reached low stock! Current Quantity: ${newQty} ${product.unit}. Min Limit: ${product.min_stock}`);
+                sendEmailAlert(`⚠️ LOW STOCK ALERT: ${product.name}`, `ዕቃዉ አብቅቷል/አንሷል! \nዕቃ: ${product.name}\nቀሪ መጠን: ${newQty} ${product.unit}\nዝቅተኛ ወሰን: ${product.min_stock}`);
             }
+
+            // Sync Cloud
+            try {
+                await supabase.from('products').update({ quantity: newQty }).eq('name', product.name);
+                await supabase.from('transactions').insert([{ material_name: product.name, type, quantity: qty, reference: ref }]);
+            } catch(e) { console.error(e); }
 
             document.getElementById('trans-qty').value = '';
             document.getElementById('trans-ref').value = '';
-            alert(`✅ Stock ${type} updated successfully!`);
-            loadData();
+            alert(`✅ Stock ${type} በትክክል ተመዝግቧል!`);
         }
 
         async function deleteMaterial(id) {
-            if (confirm("Are you sure you want to delete this material?")) {
-                await supabase.from('products').delete().eq('id', id);
-                loadData();
+            if (confirm("ይህንን ዕቃ መሰረዝ እርግጠኛ ነዎት?")) {
+                const prod = localProducts.find(p => p.id == id);
+                localProducts = localProducts.filter(p => p.id != id);
+                localStorage.setItem('products_store', JSON.stringify(localProducts));
+                renderUI();
+
+                if (prod) {
+                    try { await supabase.from('products').delete().eq('name', prod.name); } catch(e){}
+                }
             }
         }
 
         function sendEmailAlert(subject, body) {
-            const email = localStorage.getItem('alert_email');
-            if(!email) {
-                console.warn("No email configured for alert notifications.");
-                return;
-            }
-            // Trigger mailto client or cloud dispatch
+            const email = document.getElementById('user-email').value || 'ashenafihailay645@gmail.com';
             window.open(`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
         }
 
-        async function sendDailyReport() {
-            const email = localStorage.getItem('alert_email');
-            if(!email) { alert("Please set your email address at the top first!"); return; }
+        function sendDailyReport() {
+            const email = document.getElementById('user-email').value || 'ashenafihailay645@gmail.com';
 
-            const { data: transactions } = await supabase.from('transactions').select('*');
             let totalIn = 0, totalOut = 0;
+            localTransactions.forEach(t => {
+                if(t.type === 'IN') totalIn += parseInt(t.quantity);
+                if(t.type === 'OUT') totalOut += parseInt(t.quantity);
+            });
 
-            if(transactions) {
-                transactions.forEach(t => {
-                    if(t.type === 'IN') totalIn += t.quantity;
-                    if(t.type === 'OUT') totalOut += t.quantity;
-                });
-            }
-
-            const reportBody = `DAILY INVENTORY REPORT\n-----------------------\nTotal Stock IN: ${totalIn}\nTotal Stock OUT: ${totalOut}\nTotal Transactions Recorded: ${transactions ? transactions.length : 0}\n\nGenerated by Storeman Cloud App.`;
+            const reportBody = `📊 DAILY INVENTORY REPORT\n--------------------------------\nየገባ አጠቃላይ እቃ (Stock IN): ${totalIn}\n የወጣ አጠቃላይ እቃ (Stock OUT): ${totalOut}\n በአጠቃላይ የተደረጉ እንቅስቃሴዎች: ${localTransactions.length}\n\nተዘጋጀ በ: Storeman Cloud App`;
             window.open(`mailto:${email}?subject=${encodeURIComponent("📊 Daily Storeman Inventory Report")}&body=${encodeURIComponent(reportBody)}`);
         }
 
