@@ -44,7 +44,7 @@
   </style>
 
   <!-- EmailJS SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script src="email.min.js"></script>
 </head>
 <body>
 
@@ -172,9 +172,9 @@
 
     let emailConfig = JSON.parse(localStorage.getItem("emailConfig")) || {
       publicKey: "8JupT1wuqer_SMq3p",
-      serviceId: "service_g810m8a",
+      serviceId: "service_g810mga",
       lowStockTemplateId: "template_6tpdips",
-      dailyReportTemplateId: ""
+      dailyReportTemplateId: "template_tqgxj1w"
     };
 
     function initEmailJS() {
@@ -259,7 +259,16 @@
       rStatus.textContent = "⏳ Calculating Today's Movements & Sending Email...";
 
       const todayStr = new Date().toLocaleDateString('en-GB');
-      let todayTx = transactions.filter(t => new Date(t.timestamp).toLocaleDateString('en-GB') === todayStr);
+
+      let todayTx = transactions.filter(t => {
+        const transactionDate = t.timestamp || t.date;
+        if (!transactionDate) return false;
+
+        const parsedDate = new Date(transactionDate);
+        if (isNaN(parsedDate.getTime())) return false;
+
+        return parsedDate.toLocaleDateString('en-GB') === todayStr;
+      });
 
       let reportDetailsArr = [];
       let totalInAll = 0;
@@ -405,7 +414,15 @@
       document.getElementById("lowStock").textContent = materials.filter(m => m.stock <= m.minimum).length;
       
       const todayStr = new Date().toLocaleDateString('en-GB');
-      const todayCount = transactions.filter(t => new Date(t.timestamp).toLocaleDateString('en-GB') === todayStr).length;
+      const todayCount = transactions.filter(t => {
+        const transactionDate = t.timestamp || t.date;
+        if (!transactionDate) return false;
+
+        const parsedDate = new Date(transactionDate);
+        if (isNaN(parsedDate.getTime())) return false;
+
+        return parsedDate.toLocaleDateString('en-GB') === todayStr;
+      }).length;
       document.getElementById("totalTransactions").textContent = todayCount;
     }
 
