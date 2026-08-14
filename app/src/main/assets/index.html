@@ -7,17 +7,59 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/license_sync.js"></script>
     <style>
-        body { font-family: sans-serif; margin: 0; padding: 0; background: #f8fafc; }
-        .container { padding: 20px; text-align: center; }
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-top: 20px; }
+        body { font-family: sans-serif; padding: 15px; background: #f1f5f9; margin: 0; }
+        input { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #0284c7; color: white; border: none; border-radius: 6px; margin-top: 8px; font-weight: bold; font-size: 16px; }
+        .item { background: white; padding: 12px; margin: 8px 0; border-radius: 6px; display: flex; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>Storeman Inventory System</h2>
-        <div class="card">
-            <p>የስቶክ እና የኢንቬንቶሪ መቆጣጠሪያ ዳሽቦርድ</p>
-        </div>
-    </div>
+    <h3>እቃ መዝግቢ</h3>
+    <input type="text" id="name" placeholder="የእቃው ስም">
+    <input type="number" id="qty" placeholder="ብዛት">
+    <button onclick="saveProduct()">አስቀምጥ</button>
+
+    <h3>ያሉ እቃዎች</h3>
+    <div id="list">እቃዎች በመጫን ላይ...</div>
+
+    <script>
+        const supabase = supabase.createClient('https://cfnrbgfczqfpmdjzzbia.supabase.co', 'sb_publishable_AN3kSG6xIx38ThIMg4o28w_u6kPIrn2');
+
+        async function saveProduct() {
+            const name = document.getElementById('name').value;
+            const qty = document.getElementById('qty').value;
+
+            if(!name || !qty) {
+                alert("እባክዎን ሁሉንም ቦታዎች ይሙሉ!");
+                return;
+            }
+
+            const { data, error } = await supabase.from('products').insert([{ name, quantity: parseInt(qty) }]);
+            if (error) {
+                alert("ስህተት: " + error.message);
+            } else { 
+                alert("ተቀመጠ!"); 
+                document.getElementById('name').value = '';
+                document.getElementById('qty').value = '';
+                loadProducts(); 
+            }
+        }
+
+        async function loadProducts() {
+            const { data, error } = await supabase.from('products').select('*');
+            if (error) {
+                document.getElementById('list').innerHTML = "መረጃ መጫን አልተቻለም";
+                return;
+            }
+            if (data && data.length > 0) {
+                document.getElementById('list').innerHTML = data.map(item =>
+                    `<div class="item"><span><b>${item.name}</b></span> <span>${item.quantity} ፍሬ</span></div>`
+                ).join('');
+            } else {
+                document.getElementById('list').innerHTML = "<p>ምንም የተመዘገበ እቃ የለም</p>";
+            }
+        }
+        loadProducts();
+    </script>
 </body>
 </html>
