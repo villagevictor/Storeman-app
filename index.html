@@ -97,7 +97,7 @@
   <!-- Daily Summary Email Report Section -->
   <div class="section">
     <div class="section-title">📊 Daily Movement Summary Report</div>
-    <p style="font-size: 12px; color: #64748b; margin-top: -5px;">Calculate total IN/OUT for today and send to email.</p>
+    <p style="font-size: 12px; color: #64748b; margin-top: -5px;">Send today's total IN / OUT & Current stock to Email.</p>
     <button class="btn-report" onclick="sendDailySummaryEmail()">📩 Send Today's Daily Report</button>
     <div id="reportStatus" class="status-alert"></div>
   </div>
@@ -155,8 +155,11 @@
         <label style="font-size: 12px; font-weight: bold;">Service ID</label>
         <input type="text" id="cfgServiceId" placeholder="Service ID">
         
-        <label style="font-size: 12px; font-weight: bold;">Template ID</label>
-        <input type="text" id="cfgTemplateId" placeholder="Template ID">
+        <label style="font-size: 12px; font-weight: bold;">Low Stock Template ID</label>
+        <input type="text" id="cfgLowStockTemplateId" placeholder="Low Stock Template ID">
+
+        <label style="font-size: 12px; font-weight: bold;">Daily Report Template ID</label>
+        <input type="text" id="cfgDailyReportTemplateId" placeholder="Daily Report Template ID">
         
         <button class="btn-primary" onclick="saveSettings()">Save Configuration</button>
       </div>
@@ -170,7 +173,8 @@
     let emailConfig = JSON.parse(localStorage.getItem("emailConfig")) || {
       publicKey: "8JupT1wuqer_SMq3p",
       serviceId: "service_g810m8a",
-      templateId: "template_6tpdips"
+      lowStockTemplateId: "template_6tpdips",
+      dailyReportTemplateId: "" // እዚህ ጋር አዲሱን Template ID ታስገባለህ
     };
 
     function initEmailJS() {
@@ -188,7 +192,8 @@
     function openSettings() {
       document.getElementById("cfgPublicKey").value = emailConfig.publicKey || "";
       document.getElementById("cfgServiceId").value = emailConfig.serviceId || "";
-      document.getElementById("cfgTemplateId").value = emailConfig.templateId || "";
+      document.getElementById("cfgLowStockTemplateId").value = emailConfig.lowStockTemplateId || "";
+      document.getElementById("cfgDailyReportTemplateId").value = emailConfig.dailyReportTemplateId || "";
       document.getElementById("settingsModal").style.display = "flex";
     }
 
@@ -199,23 +204,25 @@
     function saveSettings() {
       const pubKey = document.getElementById("cfgPublicKey").value.trim();
       const srvId = document.getElementById("cfgServiceId").value.trim();
-      const tmpId = document.getElementById("cfgTemplateId").value.trim();
+      const lowId = document.getElementById("cfgLowStockTemplateId").value.trim();
+      const dailyId = document.getElementById("cfgDailyReportTemplateId").value.trim();
 
-      if(!pubKey || !srvId || !tmpId) {
-        alert("Please fill in all EmailJS fields.");
+      if(!pubKey || !srvId || !lowId) {
+        alert("Please fill in required EmailJS fields.");
         return;
       }
 
-      emailConfig = { publicKey: pubKey, serviceId: srvId, templateId: tmpId };
+      emailConfig = { publicKey: pubKey, serviceId: srvId, lowStockTemplateId: lowId, dailyReportTemplateId: dailyId };
       localStorage.setItem("emailConfig", JSON.stringify(emailConfig));
       initEmailJS();
       closeSettings();
       alert("Settings saved successfully!");
     }
 
+    // 1. LOW STOCK ALERT EMAIL (ለ Low Stock ብቻ)
     async function sendLowStockEmail(material, type, quantity, reference, statusElement) {
       statusElement.style.color = "#d97706";
-      statusElement.textContent = "⏳ Sending email alert...";
+      statusElement.textContent = "⏳ Sending Low Stock Alert Email...";
 
       const templateParams = {
         material: material.name,
@@ -229,33 +236,34 @@
       };
 
       try {
-        await emailjs.send(emailConfig.serviceId, emailConfig.templateId, templateParams);
+        await emailjs.send(emailConfig.serviceId, emailConfig.lowStockTemplateId, templateParams);
         statusElement.style.color = "#16a34a";
-        statusElement.textContent = "✅ Low Stock Warning Email Sent!";
+        statusElement.textContent = "⚠️ Low Stock Alert Email Sent!";
       } catch (error) {
         statusElement.style.color = "#dc2626";
-        statusElement.textContent = "❌ Error: " + (error.text || error.message);
+        statusElement.textContent = "❌ Email Error: " + (error.text || error.message);
       }
     }
 
-    // የዕለቱን (Daily Summary) ደምሮ ለኢሜይል የሚያዘጋጅ የተስተካከለ Function
+    // 2. DAILY REPORT EMAIL (የአንድ ቀን እንቅስቃሴ ስሌት)
     async function sendDailySummaryEmail() {
       const rStatus = document.getElementById("reportStatus");
-      rStatus.style.color = "#d97706";
-      rStatus.textContent = "⏳ Calculating Daily Totals & Sending Email...";
-
-      if(materials.length === 0){
-        rStatus.style.color = "#dc2626";
-        rStatus.textContent = "❌ No materials available to report.";
+      
+      if (!emailConfig.dailyReportTemplateId) {
+        alert("Please configure Daily Report Template ID in Settings first!");
+        openSettings();
         return;
       }
+
+      rStatus.style.color = "#d97706";
+      rStatus.textContent = "⏳ Calculating Today's Movements & Sending Email...";
 
       const todayStr = new Date().toLocaleDateString('en-GB');
       let todayTx = transactions.filter(t => new Date(t.timestamp).toLocaleDateString('en-GB') === todayStr);
 
-      let summaryList = [];
-      let totalOutAll = 0;
+      let reportDetailsArr = [];
       let totalInAll = 0;
+      let totalOutAll = 0;
 
       materials.forEach(m => {
         let mTx = todayTx.filter(t => t.material === m.name);
@@ -265,28 +273,24 @@
         totalInAll += inQty;
         totalOutAll += outQty;
 
-        // የኢሜይል ቴምፕሌት በሚገባው መልኩ የማቴሪያሉን ስም፣ የገባውንና የወጣውን መፃፍ
-        summaryList.push(`${m.name} [IN: +${inQty}, OUT: -${outQty}, Current: ${m.stock} ${m.unit}]`);
+        reportDetailsArr.push(`• ${m.name}: IN (+${inQty} ${m.unit}) | OUT (-${outQty} ${m.unit}) | Balance: ${m.stock} ${m.unit}`);
       });
 
       const templateParams = {
-        material: summaryList.join("; "),
-        unit: "Materials: " + materials.length,
-        stock: materials.reduce((sum,m) => sum + m.stock, 0),
-        minimum: totalInAll,
-        quantity: totalOutAll,
-        type: "DAILY REPORT",
-        reference: `Today IN: +${totalInAll} | Today OUT: -${totalOutAll}`,
-        date: todayStr
+        report_date: todayStr,
+        total_in: totalInAll,
+        total_out: totalOutAll,
+        total_items: materials.length,
+        report_details: reportDetailsArr.join("\n")
       };
 
       try {
-        await emailjs.send(emailConfig.serviceId, emailConfig.templateId, templateParams);
+        await emailjs.send(emailConfig.serviceId, emailConfig.dailyReportTemplateId, templateParams);
         rStatus.style.color = "#16a34a";
         rStatus.textContent = "✅ Daily Summary Report Sent Successfully!";
       } catch (error) {
         rStatus.style.color = "#dc2626";
-        rStatus.textContent = "❌ Error: " + (error.text || error.message);
+        rStatus.textContent = "❌ Report Email Error: " + (error.text || error.message);
       }
     }
 
