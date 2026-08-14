@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Storeman Inventory System</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background: #f1f5f9; margin: 0; padding: 12px; color: #1e293b; }
@@ -50,7 +49,7 @@
         <input type="email" id="user-email" value="ashenafihailay645@gmail.com" placeholder="Enter Email" style="margin-top:5px; margin-bottom:0;" onchange="saveEmail(this.value)">
     </div>
 
-    <!-- Summary Cards -->
+    <!-- Dynamic Summary Cards -->
     <div class="stats-grid">
         <div class="card"><div class="card-title">Total Materials</div><div class="card-value" id="total-materials">0</div></div>
         <div class="card"><div class="card-title">Total Stock</div><div class="card-value" id="total-stock">0</div></div>
@@ -80,7 +79,7 @@
         </div>
     </div>
 
-    <!-- Inventory Table -->
+    <!-- Live Inventory Table -->
     <div class="section-card" style="overflow-x:auto;">
         <div class="section-title">📋 Stock Inventory</div>
         <table>
@@ -97,7 +96,7 @@
         </table>
     </div>
 
-    <!-- Daily Report & Transaction History -->
+    <!-- Transaction History -->
     <div class="section-card" style="overflow-x:auto;">
         <div class="section-title">📜 Transaction History</div>
         <button class="btn-report" onclick="sendDailyReport()">📊 Send Daily Stock IN/OUT Email Report</button>
@@ -115,9 +114,10 @@
     </div>
 
     <script>
-        const supabase = supabase.createClient('https://cfnrbgfczqfpmdjzzbia.supabase.co', 'sb_publishable_AN3kSG6xIx38ThIMg4o28w_u6kPIrn2');
+        const supabaseUrl = 'https://cfnrbgfczqfpmdjzzbia.supabase.co';
+        const supabaseKey = 'sb_publishable_AN3kSG6xIx38ThIMg4o28w_u6kPIrn2';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-        // Local State Management (Ensures 100% functionality even if network lags)
         let localProducts = JSON.parse(localStorage.getItem('products_store') || '[]');
         let localTransactions = JSON.parse(localStorage.getItem('transactions_store') || '[]');
 
@@ -126,7 +126,6 @@
         }
 
         async function loadData() {
-            // Try fetching from Supabase
             try {
                 const { data: products } = await supabase.from('products').select('*');
                 if (products && products.length > 0) {
@@ -140,7 +139,7 @@
                     localStorage.setItem('transactions_store', JSON.stringify(transactions));
                 }
             } catch(e) {
-                console.log("Using Local Cache:", e);
+                console.log("Cloud sync error, fallback to local:", e);
             }
 
             renderUI();
@@ -193,7 +192,7 @@
                     </tr>
                 `;
             });
-            document.getElementById('transaction-list').innerHTML = transHTML || '<tr><td colspan="4">No transactions yet.</td></tr>';
+            document.getElementById('transaction-list').innerHTML = transHTML || '<tr><td colspan="4">No transactions recorded yet.</td></tr>';
         }
 
         async function addMaterial() {
@@ -213,15 +212,13 @@
                 created_at: new Date().toISOString()
             };
 
-            // Local Save Immediate
             localProducts.push(newProduct);
             localStorage.setItem('products_store', JSON.stringify(localProducts));
             renderUI();
 
-            // Cloud Sync
             try {
                 await supabase.from('products').insert([{ name, unit, quantity, min_stock }]);
-            } catch(e) { console.error(e); }
+            } catch(e) { console.error("Cloud Error:", e); }
 
             document.getElementById('m-name').value = '';
             document.getElementById('m-unit').value = '';
@@ -259,16 +256,14 @@
             localStorage.setItem('transactions_store', JSON.stringify(localTransactions));
             renderUI();
 
-            // Low Stock Auto Email Trigger
             if (newQty <= (product.min_stock || 0)) {
                 sendEmailAlert(`⚠️ LOW STOCK ALERT: ${product.name}`, `ዕቃዉ አብቅቷል/አንሷል! \nዕቃ: ${product.name}\nቀሪ መጠን: ${newQty} ${product.unit}\nዝቅተኛ ወሰን: ${product.min_stock}`);
             }
 
-            // Sync Cloud
             try {
                 await supabase.from('products').update({ quantity: newQty }).eq('name', product.name);
                 await supabase.from('transactions').insert([{ material_name: product.name, type, quantity: qty, reference: ref }]);
-            } catch(e) { console.error(e); }
+            } catch(e) { console.error("Cloud Error:", e); }
 
             document.getElementById('trans-qty').value = '';
             document.getElementById('trans-ref').value = '';
