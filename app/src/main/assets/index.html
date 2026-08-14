@@ -219,14 +219,13 @@
 
       const templateParams = {
         material: material.name,
-        material_name: material.name,
         unit: material.unit,
         stock: material.stock,
         minimum: material.minimum,
         quantity: quantity,
         type: type,
         reference: reference || "-",
-        date: new Date().toLocaleString()
+        date: new Date().toLocaleDateString('en-GB')
       };
 
       try {
@@ -239,7 +238,7 @@
       }
     }
 
-    // የዕለቱን (Daily Summary) ደምሮ ለኢሜይል የሚያዘጋጅ Function
+    // የዕለቱን (Daily Summary) ደምሮ ለኢሜይል የሚያዘጋጅ የተስተካከለ Function
     async function sendDailySummaryEmail() {
       const rStatus = document.getElementById("reportStatus");
       rStatus.style.color = "#d97706";
@@ -251,8 +250,8 @@
         return;
       }
 
-      const todayStr = new Date().toLocaleDateString();
-      let todayTx = transactions.filter(t => new Date(t.timestamp).toLocaleDateString() === todayStr);
+      const todayStr = new Date().toLocaleDateString('en-GB');
+      let todayTx = transactions.filter(t => new Date(t.timestamp).toLocaleDateString('en-GB') === todayStr);
 
       let summaryList = [];
       let totalOutAll = 0;
@@ -266,19 +265,19 @@
         totalInAll += inQty;
         totalOutAll += outQty;
 
-        summaryList.push(`${m.name}: [IN: +${inQty} | OUT: -${outQty} | Current: ${m.stock} ${m.unit}]`);
+        // የኢሜይል ቴምፕሌት በሚገባው መልኩ የማቴሪያሉን ስም፣ የገባውንና የወጣውን መፃፍ
+        summaryList.push(`${m.name} [IN: +${inQty}, OUT: -${outQty}, Current: ${m.stock} ${m.unit}]`);
       });
 
       const templateParams = {
-        material: summaryList.join(" || "),
-        material_name: "DAILY SUMMARY REPORT (" + todayStr + ")",
-        unit: "Total Items: " + materials.length,
+        material: summaryList.join("; "),
+        unit: "Materials: " + materials.length,
         stock: materials.reduce((sum,m) => sum + m.stock, 0),
-        minimum: 0,
-        quantity: "Total Out Today: " + totalOutAll,
-        type: "DAILY SUMMARY",
-        reference: `Today's Total IN: +${totalInAll} | Today's Total OUT: -${totalOutAll}`,
-        date: new Date().toLocaleString()
+        minimum: totalInAll,
+        quantity: totalOutAll,
+        type: "DAILY REPORT",
+        reference: `Today IN: +${totalInAll} | Today OUT: -${totalOutAll}`,
+        date: todayStr
       };
 
       try {
@@ -401,8 +400,8 @@
       document.getElementById("totalStock").textContent = materials.reduce((sum,m) => sum + m.stock, 0);
       document.getElementById("lowStock").textContent = materials.filter(m => m.stock <= m.minimum).length;
       
-      const todayStr = new Date().toLocaleDateString();
-      const todayCount = transactions.filter(t => new Date(t.timestamp).toLocaleDateString() === todayStr).length;
+      const todayStr = new Date().toLocaleDateString('en-GB');
+      const todayCount = transactions.filter(t => new Date(t.timestamp).toLocaleDateString('en-GB') === todayStr).length;
       document.getElementById("totalTransactions").textContent = todayCount;
     }
 
