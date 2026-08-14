@@ -174,7 +174,7 @@
       publicKey: "8JupT1wuqer_SMq3p",
       serviceId: "service_g810m8a",
       lowStockTemplateId: "template_6tpdips",
-      dailyReportTemplateId: "" // እዚህ ጋር አዲሱን Template ID ታስገባለህ
+      dailyReportTemplateId: ""
     };
 
     function initEmailJS() {
@@ -219,18 +219,18 @@
       alert("Settings saved successfully!");
     }
 
-    // 1. LOW STOCK ALERT EMAIL (ለ Low Stock ብቻ)
+    // 1. LOW STOCK ALERT EMAIL (ተስተካክሎ የተፃፈ)
     async function sendLowStockEmail(material, type, quantity, reference, statusElement) {
       statusElement.style.color = "#d97706";
       statusElement.textContent = "⏳ Sending Low Stock Alert Email...";
 
       const templateParams = {
-        material: material.name,
+        material_name: material.name,
+        current_stock: material.stock,
+        minimum_stock: material.minimum,
         unit: material.unit,
-        stock: material.stock,
-        minimum: material.minimum,
-        quantity: quantity,
         type: type,
+        quantity: quantity,
         reference: reference || "-",
         date: new Date().toLocaleDateString('en-GB')
       };
@@ -245,7 +245,7 @@
       }
     }
 
-    // 2. DAILY REPORT EMAIL (የአንድ ቀን እንቅስቃሴ ስሌት)
+    // 2. DAILY REPORT EMAIL
     async function sendDailySummaryEmail() {
       const rStatus = document.getElementById("reportStatus");
       
