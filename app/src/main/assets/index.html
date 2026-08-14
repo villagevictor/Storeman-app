@@ -1,65 +1,229 @@
 <!DOCTYPE html>
-<html lang="am">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Storeman Inventory</title>
+    <title>Storeman Inventory System</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/license_sync.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 15px; background: #f1f5f9; margin: 0; }
-        input { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #0284c7; color: white; border: none; border-radius: 6px; margin-top: 8px; font-weight: bold; font-size: 16px; }
-        .item { background: white; padding: 12px; margin: 8px 0; border-radius: 6px; display: flex; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background: #f1f5f9; margin: 0; padding: 12px; color: #1e293b; }
+        
+        .header { background: #0f2b48; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
+        .header h2 { margin: 0; font-size: 18px; }
+        .header p { margin: 4px 0 0 0; font-size: 12px; opacity: 0.8; }
+
+        /* Summary Cards Grid */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .card { background: white; padding: 12px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .card-title { font-size: 12px; color: #64748b; font-weight: bold; }
+        .card-value { font-size: 22px; font-weight: bold; margin-top: 5px; color: #0f2b48; }
+
+        /* Forms Styling */
+        .section-card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .section-title { font-size: 16px; font-weight: bold; color: #0f2b48; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+        
+        input, select { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; outline: none; }
+        .btn-primary { width: 100%; padding: 12px; background: #0f2b48; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        
+        /* Table Styling */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        th { text-align: left; padding: 8px; color: #64748b; border-bottom: 2px solid #f1f5f9; }
+        td { padding: 10px 8px; border-bottom: 1px solid #f1f5f9; }
+        
+        .badge-ok { color: #16a34a; font-weight: bold; }
+        .badge-low { color: #dc2626; font-weight: bold; font-size: 11px; }
+        .btn-delete { background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
     </style>
 </head>
 <body>
-    <h3>እቃ መዝግቢ</h3>
-    <input type="text" id="name" placeholder="የእቃው ስም">
-    <input type="number" id="qty" placeholder="ብዛት">
-    <button onclick="saveProduct()">አስቀምጥ</button>
 
-    <h3>ያሉ እቃዎች</h3>
-    <div id="list">እቃዎች በመጫን ላይ...</div>
+    <div class="header">
+        <h2>📦 Storeman Inventory System</h2>
+        <p>Stock Management Dashboard</p>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="stats-grid">
+        <div class="card"><div class="card-title">Total Materials</div><div class="card-value" id="total-materials">0</div></div>
+        <div class="card"><div class="card-title">Total Stock</div><div class="card-value" id="total-stock">0</div></div>
+        <div class="card"><div class="card-title">Low Stock</div><div class="card-value" id="low-stock" style="color:#dc2626;">0</div></div>
+        <div class="card"><div class="card-title">Transactions</div><div class="card-value" id="total-transactions">0</div></div>
+    </div>
+
+    <!-- Add Material Form -->
+    <div class="section-card">
+        <div class="section-title">➕ Add Material</div>
+        <input type="text" id="m-name" placeholder="Material name">
+        <input type="text" id="m-unit" placeholder="Unit (e.g. Pcs, Roll, Qtl)">
+        <input type="number" id="m-stock" placeholder="Initial stock">
+        <input type="number" id="m-min" placeholder="Minimum stock">
+        <button class="btn-primary" onclick="addMaterial()">Add Material</button>
+    </div>
+
+    <!-- Stock In / Stock Out Form -->
+    <div class="section-card">
+        <div class="section-title">📥 Stock In / 📤 Stock Out</div>
+        <select id="trans-material"><option value="">Select material</option></select>
+        <input type="number" id="trans-qty" placeholder="Quantity">
+        <input type="text" id="trans-ref" placeholder="Reference (Optional)">
+        <div style="display:flex; gap:10px;">
+            <button class="btn-primary" style="background:#16a34a;" onclick="handleStock('IN')">📥 Stock IN</button>
+            <button class="btn-primary" style="background:#dc2626;" onclick="handleStock('OUT')">📤 Stock OUT</button>
+        </div>
+    </div>
+
+    <!-- Inventory Table -->
+    <div class="section-card" style="overflow-x:auto;">
+        <div class="section-title">📋 Stock Inventory</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Material</th>
+                    <th>Unit</th>
+                    <th>Qty</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="inventory-list"></tbody>
+        </table>
+    </div>
+
+    <!-- Transaction History Table -->
+    <div class="section-card" style="overflow-x:auto;">
+        <div class="section-title">📜 Transaction History</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Material</th>
+                    <th>Type</th>
+                    <th>Qty</th>
+                </tr>
+            </thead>
+            <tbody id="transaction-list"></tbody>
+        </table>
+    </div>
 
     <script>
         const supabase = supabase.createClient('https://cfnrbgfczqfpmdjzzbia.supabase.co', 'sb_publishable_AN3kSG6xIx38ThIMg4o28w_u6kPIrn2');
 
-        async function saveProduct() {
-            const name = document.getElementById('name').value;
-            const qty = document.getElementById('qty').value;
+        async function loadData() {
+            // Load Products
+            const { data: products } = await supabase.from('products').select('*');
+            // Load Transactions
+            const { data: transactions } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
 
-            if(!name || !qty) {
-                alert("እባክዎን ሁሉንም ቦታዎች ይሙሉ!");
-                return;
+            let totalStock = 0;
+            let lowStockCount = 0;
+            let productOptions = '<option value="">Select material</option>';
+            let inventoryHTML = '';
+
+            if (products) {
+                products.forEach(item => {
+                    const qty = item.quantity || 0;
+                    const min = item.min_stock || 0;
+                    totalStock += qty;
+                    
+                    const isLow = qty <= min;
+                    if (isLow) lowStockCount++;
+
+                    productOptions += `<option value="${item.id}">${item.name}</option>`;
+
+                    inventoryHTML += `
+                        <tr>
+                            <td><b>${item.name}</b></td>
+                            <td>${item.unit || 'Pcs'}</td>
+                            <td><b>${qty}</b></td>
+                            <td>${isLow ? '<span class="badge-low">⚠️ LOW STOCK</span>' : '<span class="badge-ok">✓ OK</span>'}</td>
+                            <td><button class="btn-delete" onclick="deleteMaterial('${item.id}')">Delete</button></td>
+                        </tr>
+                    `;
+                });
             }
 
-            const { data, error } = await supabase.from('products').insert([{ name, quantity: parseInt(qty) }]);
-            if (error) {
-                alert("ስህተት: " + error.message);
-            } else { 
-                alert("ተቀመጠ!"); 
-                document.getElementById('name').value = '';
-                document.getElementById('qty').value = '';
-                loadProducts(); 
+            document.getElementById('total-materials').innerText = products ? products.length : 0;
+            document.getElementById('total-stock').innerText = totalStock;
+            document.getElementById('low-stock').innerText = lowStockCount;
+            document.getElementById('total-transactions').innerText = transactions ? transactions.length : 0;
+
+            document.getElementById('inventory-list').innerHTML = inventoryHTML || '<tr><td colspan="5">No materials added yet.</td></tr>';
+            document.getElementById('trans-material').innerHTML = productOptions;
+
+            // Render Transactions
+            let transHTML = '';
+            if (transactions) {
+                transactions.forEach(t => {
+                    const date = new Date(t.created_at).toLocaleDateString() + ' ' + new Date(t.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    transHTML += `
+                        <tr>
+                            <td style="font-size:11px; color:#64748b;">${date}</td>
+                            <td><b>${t.material_name}</b></td>
+                            <td style="color:${t.type === 'IN' ? '#16a34a' : '#dc2626'}; font-weight:bold;">${t.type === 'IN' ? '📥 IN' : '📤 OUT'}</td>
+                            <td><b>${t.quantity}</b></td>
+                        </tr>
+                    `;
+                });
+            }
+            document.getElementById('transaction-list').innerHTML = transHTML || '<tr><td colspan="4">No transactions yet.</td></tr>';
+        }
+
+        async function addMaterial() {
+            const name = document.getElementById('m-name').value;
+            const unit = document.getElementById('m-unit').value || 'Pcs';
+            const quantity = parseInt(document.getElementById('m-stock').value) || 0;
+            const min_stock = parseInt(document.getElementById('m-min').value) || 0;
+
+            if(!name) { alert("Please enter material name!"); return; }
+
+            await supabase.from('products').insert([{ name, unit, quantity, min_stock }]);
+            
+            document.getElementById('m-name').value = '';
+            document.getElementById('m-unit').value = '';
+            document.getElementById('m-stock').value = '';
+            document.getElementById('m-min').value = '';
+            loadData();
+        }
+
+        async function handleStock(type) {
+            const pId = document.getElementById('trans-material').value;
+            const qty = parseInt(document.getElementById('trans-qty').value);
+            const ref = document.getElementById('trans-ref').value || '-';
+
+            if (!pId || !qty || qty <= 0) { alert("Select material and valid quantity!"); return; }
+
+            const { data: product } = await supabase.from('products').select('*').eq('id', pId).single();
+            if(!product) return;
+
+            let newQty = type === 'IN' ? (product.quantity + qty) : (product.quantity - qty);
+            if (newQty < 0) { alert("Error: Stock cannot be negative!"); return; }
+
+            // Update Stock
+            await supabase.from('products').update({ quantity: newQty }).eq('id', pId);
+
+            // Log Transaction
+            await supabase.from('transactions').insert([{
+                material_name: product.name,
+                type: type,
+                quantity: qty,
+                reference: ref
+            }]);
+
+            document.getElementById('trans-qty').value = '';
+            document.getElementById('trans-ref').value = '';
+            loadData();
+        }
+
+        async function deleteMaterial(id) {
+            if (confirm("Are you sure you want to delete this material?")) {
+                await supabase.from('products').delete().eq('id', id);
+                loadData();
             }
         }
 
-        async function loadProducts() {
-            const { data, error } = await supabase.from('products').select('*');
-            if (error) {
-                document.getElementById('list').innerHTML = "መረጃ መጫን አልተቻለም";
-                return;
-            }
-            if (data && data.length > 0) {
-                document.getElementById('list').innerHTML = data.map(item =>
-                    `<div class="item"><span><b>${item.name}</b></span> <span>${item.quantity} ፍሬ</span></div>`
-                ).join('');
-            } else {
-                document.getElementById('list').innerHTML = "<p>ምንም የተመዘገበ እቃ የለም</p>";
-            }
-        }
-        loadProducts();
+        loadData();
     </script>
 </body>
 </html>
