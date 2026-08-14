@@ -14,27 +14,27 @@
         .header h2 { margin: 0; font-size: 18px; }
         .header p { margin: 4px 0 0 0; font-size: 12px; opacity: 0.8; }
 
-        /* Summary Cards Grid */
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         .card { background: white; padding: 12px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .card-title { font-size: 12px; color: #64748b; font-weight: bold; }
         .card-value { font-size: 22px; font-weight: bold; margin-top: 5px; color: #0f2b48; }
 
-        /* Forms Styling */
         .section-card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .section-title { font-size: 16px; font-weight: bold; color: #0f2b48; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+        .section-title { font-size: 16px; font-weight: bold; color: #0f2b48; margin-bottom: 12px; }
         
-        input, select { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; outline: none; }
+        input, select { width: 100%; padding: 11px; margin-bottom: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; outline: none; }
         .btn-primary { width: 100%; padding: 12px; background: #0f2b48; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-report { width: 100%; padding: 10px; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; margin-top: 5px; cursor: pointer; }
         
-        /* Table Styling */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
         th { text-align: left; padding: 8px; color: #64748b; border-bottom: 2px solid #f1f5f9; }
         td { padding: 10px 8px; border-bottom: 1px solid #f1f5f9; }
         
         .badge-ok { color: #16a34a; font-weight: bold; }
         .badge-low { color: #dc2626; font-weight: bold; font-size: 11px; }
-        .btn-delete { background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+        .btn-delete { background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+        
+        .email-config { background: #e0f2fe; border: 1px solid #bae6fd; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -42,6 +42,12 @@
     <div class="header">
         <h2>📦 Storeman Inventory System</h2>
         <p>Stock Management Dashboard</p>
+    </div>
+
+    <!-- Email Notification Setting -->
+    <div class="email-config">
+        <label><b>📧 Notification Email for Alerts & Daily Reports:</b></label>
+        <input type="email" id="user-email" placeholder="Enter your email (e.g. manager@gmail.com)" style="margin-top:5px; margin-bottom:0;" onchange="saveEmail(this.value)">
     </div>
 
     <!-- Summary Cards -->
@@ -55,11 +61,11 @@
     <!-- Add Material Form -->
     <div class="section-card">
         <div class="section-title">➕ Add Material</div>
-        <input type="text" id="m-name" placeholder="Material name">
-        <input type="text" id="m-unit" placeholder="Unit (e.g. Pcs, Roll, Qtl)">
-        <input type="number" id="m-stock" placeholder="Initial stock">
-        <input type="number" id="m-min" placeholder="Minimum stock">
-        <button class="btn-primary" onclick="addMaterial()">Add Material</button>
+        <input type="text" id="m-name" placeholder="Material name (e.g. Cement)">
+        <input type="text" id="m-unit" placeholder="Unit (e.g. Bag, Pcs, Roll)">
+        <input type="number" id="m-stock" placeholder="Initial stock quantity">
+        <input type="number" id="m-min" placeholder="Minimum stock limit (Low stock alert threshold)">
+        <button class="btn-primary" id="btn-add" onclick="addMaterial()">Add Material</button>
     </div>
 
     <!-- Stock In / Stock Out Form -->
@@ -67,7 +73,7 @@
         <div class="section-title">📥 Stock In / 📤 Stock Out</div>
         <select id="trans-material"><option value="">Select material</option></select>
         <input type="number" id="trans-qty" placeholder="Quantity">
-        <input type="text" id="trans-ref" placeholder="Reference (Optional)">
+        <input type="text" id="trans-ref" placeholder="Reference / Note (Optional)">
         <div style="display:flex; gap:10px;">
             <button class="btn-primary" style="background:#16a34a;" onclick="handleStock('IN')">📥 Stock IN</button>
             <button class="btn-primary" style="background:#dc2626;" onclick="handleStock('OUT')">📤 Stock OUT</button>
@@ -91,9 +97,10 @@
         </table>
     </div>
 
-    <!-- Transaction History Table -->
+    <!-- Daily Report & Transaction History -->
     <div class="section-card" style="overflow-x:auto;">
         <div class="section-title">📜 Transaction History</div>
+        <button class="btn-report" onclick="sendDailyReport()">📧 Send Daily Stock IN/OUT Email Report</button>
         <table>
             <thead>
                 <tr>
@@ -110,81 +117,104 @@
     <script>
         const supabase = supabase.createClient('https://cfnrbgfczqfpmdjzzbia.supabase.co', 'sb_publishable_AN3kSG6xIx38ThIMg4o28w_u6kPIrn2');
 
+        // Restore saved email
+        document.getElementById('user-email').value = localStorage.getItem('alert_email') || '';
+
+        function saveEmail(val) {
+            localStorage.setItem('alert_email', val);
+        }
+
         async function loadData() {
-            // Load Products
-            const { data: products } = await supabase.from('products').select('*');
-            // Load Transactions
-            const { data: transactions } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
+            try {
+                const { data: products, error: pErr } = await supabase.from('products').select('*');
+                if (pErr) console.error("Products Load Error:", pErr);
 
-            let totalStock = 0;
-            let lowStockCount = 0;
-            let productOptions = '<option value="">Select material</option>';
-            let inventoryHTML = '';
+                const { data: transactions, error: tErr } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
+                if (tErr) console.error("Transactions Load Error:", tErr);
 
-            if (products) {
-                products.forEach(item => {
-                    const qty = item.quantity || 0;
-                    const min = item.min_stock || 0;
-                    totalStock += qty;
-                    
-                    const isLow = qty <= min;
-                    if (isLow) lowStockCount++;
+                let totalStock = 0;
+                let lowStockCount = 0;
+                let productOptions = '<option value="">Select material</option>';
+                let inventoryHTML = '';
 
-                    productOptions += `<option value="${item.id}">${item.name}</option>`;
+                if (products) {
+                    products.forEach(item => {
+                        const qty = item.quantity || 0;
+                        const min = item.min_stock || 0;
+                        totalStock += qty;
+                        
+                        const isLow = qty <= min;
+                        if (isLow) lowStockCount++;
 
-                    inventoryHTML += `
-                        <tr>
-                            <td><b>${item.name}</b></td>
-                            <td>${item.unit || 'Pcs'}</td>
-                            <td><b>${qty}</b></td>
-                            <td>${isLow ? '<span class="badge-low">⚠️ LOW STOCK</span>' : '<span class="badge-ok">✓ OK</span>'}</td>
-                            <td><button class="btn-delete" onclick="deleteMaterial('${item.id}')">Delete</button></td>
-                        </tr>
-                    `;
-                });
+                        productOptions += `<option value="${item.id}">${item.name}</option>`;
+
+                        inventoryHTML += `
+                            <tr>
+                                <td><b>${item.name}</b></td>
+                                <td>${item.unit || 'Pcs'}</td>
+                                <td><b>${qty}</b></td>
+                                <td>${isLow ? '<span class="badge-low">⚠️ LOW STOCK</span>' : '<span class="badge-ok">✓ OK</span>'}</td>
+                                <td><button class="btn-delete" onclick="deleteMaterial('${item.id}')">Delete</button></td>
+                            </tr>
+                        `;
+                    });
+                }
+
+                document.getElementById('total-materials').innerText = products ? products.length : 0;
+                document.getElementById('total-stock').innerText = totalStock;
+                document.getElementById('low-stock').innerText = lowStockCount;
+                document.getElementById('total-transactions').innerText = transactions ? transactions.length : 0;
+
+                document.getElementById('inventory-list').innerHTML = inventoryHTML || '<tr><td colspan="5">No materials found.</td></tr>';
+                document.getElementById('trans-material').innerHTML = productOptions;
+
+                let transHTML = '';
+                if (transactions) {
+                    transactions.forEach(t => {
+                        const date = new Date(t.created_at).toLocaleDateString() + ' ' + new Date(t.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        transHTML += `
+                            <tr>
+                                <td style="font-size:11px; color:#64748b;">${date}</td>
+                                <td><b>${t.material_name}</b></td>
+                                <td style="color:${t.type === 'IN' ? '#16a34a' : '#dc2626'}; font-weight:bold;">${t.type === 'IN' ? '📥 IN' : '📤 OUT'}</td>
+                                <td><b>${t.quantity}</b></td>
+                            </tr>
+                        `;
+                    });
+                }
+                document.getElementById('transaction-list').innerHTML = transHTML || '<tr><td colspan="4">No transactions recorded yet.</td></tr>';
+            } catch (err) {
+                alert("Error loading data: " + err.message);
             }
-
-            document.getElementById('total-materials').innerText = products ? products.length : 0;
-            document.getElementById('total-stock').innerText = totalStock;
-            document.getElementById('low-stock').innerText = lowStockCount;
-            document.getElementById('total-transactions').innerText = transactions ? transactions.length : 0;
-
-            document.getElementById('inventory-list').innerHTML = inventoryHTML || '<tr><td colspan="5">No materials added yet.</td></tr>';
-            document.getElementById('trans-material').innerHTML = productOptions;
-
-            // Render Transactions
-            let transHTML = '';
-            if (transactions) {
-                transactions.forEach(t => {
-                    const date = new Date(t.created_at).toLocaleDateString() + ' ' + new Date(t.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    transHTML += `
-                        <tr>
-                            <td style="font-size:11px; color:#64748b;">${date}</td>
-                            <td><b>${t.material_name}</b></td>
-                            <td style="color:${t.type === 'IN' ? '#16a34a' : '#dc2626'}; font-weight:bold;">${t.type === 'IN' ? '📥 IN' : '📤 OUT'}</td>
-                            <td><b>${t.quantity}</b></td>
-                        </tr>
-                    `;
-                });
-            }
-            document.getElementById('transaction-list').innerHTML = transHTML || '<tr><td colspan="4">No transactions yet.</td></tr>';
         }
 
         async function addMaterial() {
-            const name = document.getElementById('m-name').value;
-            const unit = document.getElementById('m-unit').value || 'Pcs';
+            const name = document.getElementById('m-name').value.trim();
+            const unit = document.getElementById('m-unit').value.trim() || 'Pcs';
             const quantity = parseInt(document.getElementById('m-stock').value) || 0;
             const min_stock = parseInt(document.getElementById('m-min').value) || 0;
 
-            if(!name) { alert("Please enter material name!"); return; }
+            if(!name) { alert("Please enter a material name!"); return; }
 
-            await supabase.from('products').insert([{ name, unit, quantity, min_stock }]);
+            const btn = document.getElementById('btn-add');
+            btn.innerText = "Saving...";
+            btn.disabled = true;
+
+            const { data, error } = await supabase.from('products').insert([{ name, unit, quantity, min_stock }]);
             
-            document.getElementById('m-name').value = '';
-            document.getElementById('m-unit').value = '';
-            document.getElementById('m-stock').value = '';
-            document.getElementById('m-min').value = '';
-            loadData();
+            btn.innerText = "Add Material";
+            btn.disabled = false;
+
+            if(error) {
+                alert("Failed to save: " + error.message);
+            } else {
+                alert("✅ Material added successfully!");
+                document.getElementById('m-name').value = '';
+                document.getElementById('m-unit').value = '';
+                document.getElementById('m-stock').value = '';
+                document.getElementById('m-min').value = '';
+                loadData();
+            }
         }
 
         async function handleStock(type) {
@@ -192,15 +222,15 @@
             const qty = parseInt(document.getElementById('trans-qty').value);
             const ref = document.getElementById('trans-ref').value || '-';
 
-            if (!pId || !qty || qty <= 0) { alert("Select material and valid quantity!"); return; }
+            if (!pId || !qty || qty <= 0) { alert("Please select a material and enter a valid quantity!"); return; }
 
-            const { data: product } = await supabase.from('products').select('*').eq('id', pId).single();
-            if(!product) return;
+            const { data: product, error: fetchErr } = await supabase.from('products').select('*').eq('id', pId).single();
+            if(fetchErr || !product) { alert("Error finding material."); return; }
 
             let newQty = type === 'IN' ? (product.quantity + qty) : (product.quantity - qty);
-            if (newQty < 0) { alert("Error: Stock cannot be negative!"); return; }
+            if (newQty < 0) { alert("Error: Quantity cannot be lower than 0!"); return; }
 
-            // Update Stock
+            // Update product qty
             await supabase.from('products').update({ quantity: newQty }).eq('id', pId);
 
             // Log Transaction
@@ -211,8 +241,14 @@
                 reference: ref
             }]);
 
+            // Low Stock Email Check
+            if (newQty <= (product.min_stock || 0)) {
+                sendEmailAlert(`⚠️ LOW STOCK ALERT: ${product.name}`, `Material "${product.name}" has reached low stock! Current Quantity: ${newQty} ${product.unit}. Min Limit: ${product.min_stock}`);
+            }
+
             document.getElementById('trans-qty').value = '';
             document.getElementById('trans-ref').value = '';
+            alert(`✅ Stock ${type} updated successfully!`);
             loadData();
         }
 
@@ -221,6 +257,34 @@
                 await supabase.from('products').delete().eq('id', id);
                 loadData();
             }
+        }
+
+        function sendEmailAlert(subject, body) {
+            const email = localStorage.getItem('alert_email');
+            if(!email) {
+                console.warn("No email configured for alert notifications.");
+                return;
+            }
+            // Trigger mailto client or cloud dispatch
+            window.open(`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+        }
+
+        async function sendDailyReport() {
+            const email = localStorage.getItem('alert_email');
+            if(!email) { alert("Please set your email address at the top first!"); return; }
+
+            const { data: transactions } = await supabase.from('transactions').select('*');
+            let totalIn = 0, totalOut = 0;
+
+            if(transactions) {
+                transactions.forEach(t => {
+                    if(t.type === 'IN') totalIn += t.quantity;
+                    if(t.type === 'OUT') totalOut += t.quantity;
+                });
+            }
+
+            const reportBody = `DAILY INVENTORY REPORT\n-----------------------\nTotal Stock IN: ${totalIn}\nTotal Stock OUT: ${totalOut}\nTotal Transactions Recorded: ${transactions ? transactions.length : 0}\n\nGenerated by Storeman Cloud App.`;
+            window.open(`mailto:${email}?subject=${encodeURIComponent("📊 Daily Storeman Inventory Report")}&body=${encodeURIComponent(reportBody)}`);
         }
 
         loadData();
