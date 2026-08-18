@@ -413,9 +413,9 @@
             }
         }
 
-        // Online Cloud Backup Function
+        // Optimized Cloud Backup (Full Store Backup via Email Key)
         async function cloudBackupData() {
-            const email = document.getElementById('backup-user-email').value.trim();
+            const email = document.getElementById('backup-user-email').value.trim().toLowerCase();
             const msgBox = document.getElementById('cloud-backup-msg');
 
             if (!email) {
@@ -424,32 +424,34 @@
             }
 
             msgBox.className = "status-msg msg-sending";
-            msgBox.innerText = "⏳ Saving Backup to Cloud Database...";
+            msgBox.innerText = "⏳ Saving Full Backup to Cloud Database...";
 
             try {
-                // Save products
-                for (const item of localProducts) {
-                    await supabaseClient.from('materials').upsert([{ 
-                        name: item.name, 
-                        unit: item.unit, 
-                        quantity: item.quantity, 
-                        unit_price: item.unit_price, 
-                        min_stock: item.min_stock 
-                    }]);
-                }
+                const payload = {
+                    email: email,
+                    materials_data: JSON.stringify(localProducts),
+                    transactions_data: JSON.stringify(localTransactions),
+                    updated_at: new Date().toISOString()
+                };
+
+                const { error } = await supabaseClient
+                    .from('store_backups')
+                    .upsert(payload, { onConflict: 'email' });
+
+                if (error) throw error;
 
                 msgBox.className = "status-msg msg-success";
-                msgBox.innerText = `☁️ Backup saved successfully for ${email}!`;
+                msgBox.innerText = `☁️ Full backup saved successfully for ${email}!`;
                 setTimeout(() => { msgBox.innerText = ''; }, 4000);
             } catch (err) {
                 msgBox.className = "status-msg msg-error";
-                msgBox.innerText = "❌ Cloud Backup Failed! Check Connection.";
+                msgBox.innerText = "❌ Cloud Backup Failed! Check Connection or Database Table.";
             }
         }
 
-        // Online Cloud Restore Function
+        // Optimized Cloud Restore (Full Store Restore via Email Key)
         async function cloudRestoreData() {
-            const email = document.getElementById('backup-user-email').value.trim();
+            const email = document.getElementById('backup-user-email').value.trim().toLowerCase();
             const msgBox = document.getElementById('cloud-backup-msg');
 
             if (!email) {
@@ -461,21 +463,30 @@
             msgBox.innerText = "⏳ Fetching Backup Data from Cloud...";
 
             try {
-                const { data: products, error: pErr } = await supabaseClient.from('materials').select('*');
-                const { data: transactions, error: tErr } = await supabaseClient.from('transactions').select('*').order('created_at', { ascending: false });
+                const { data, error } = await supabaseClient
+                    .from('store_backups')
+                    .select('*')
+                    .eq('email', email)
+                    .single();
 
-                if (products && products.length > 0) {
-                    localProducts = products;
-                    localStorage.setItem('products_store', JSON.stringify(products));
+                if (error || !data) {
+                    msgBox.className = "status-msg msg-error";
+                    msgBox.innerText = "⚠️ No backup found for this email!";
+                    return;
                 }
-                if (transactions && transactions.length > 0) {
-                    localTransactions = transactions;
-                    localStorage.setItem('transactions_store', JSON.stringify(transactions));
+
+                if (data.materials_data) {
+                    localProducts = JSON.parse(data.materials_data);
+                    localStorage.setItem('products_store', JSON.stringify(localProducts));
+                }
+                if (data.transactions_data) {
+                    localTransactions = JSON.parse(data.transactions_data);
+                    localStorage.setItem('transactions_store', JSON.stringify(localTransactions));
                 }
 
                 renderUI();
                 msgBox.className = "status-msg msg-success";
-                msgBox.innerText = "✅ Data Restored Successfully from Database!";
+                msgBox.innerText = "✅ Data Restored Successfully from Cloud Database!";
                 setTimeout(() => { msgBox.innerText = ''; }, 4000);
             } catch (err) {
                 msgBox.className = "status-msg msg-error";
