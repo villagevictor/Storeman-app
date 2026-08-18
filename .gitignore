@@ -1,0 +1,23 @@
+# Android / Gradle
+.gradle/
+build/
+**/build/
+
+# Local signing configuration
+app/keystore.properties
+
+# Keystore files
+*.jks
+*.keystore
+*.p12
+
+# Local backup files
+*.before-signing
+*.pre-build-safe
+*.before-price-feature
+*.before-price-history
+*.before-price-transaction
+*.email-backup
+*.email-fix-backup
+*.save
+*.backup
