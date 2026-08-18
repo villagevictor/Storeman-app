@@ -100,17 +100,18 @@
         <div id="daily-report-msg" class="status-msg"></div>
     </div>
 
-    <!-- Backup & Restore Data Section -->
+    <!-- Database Cloud Backup & Restore Section -->
     <div class="section-card">
-        <div class="section-title">💾 Data Backup & Restore</div>
-        <p style="font-size: 11px; color: #64748b; margin-top:-6px; margin-bottom:12px;">Export inventory data to file or restore from previous backup.</p>
-        <button class="btn-navy" onclick="exportBackupData()">📥 Download JSON Backup</button>
-        <div style="margin-top:12px;">
-            <label class="modal-label">Restore Data from Backup File (.json):</label>
-            <input type="file" id="backup-file-input" accept=".json" style="padding: 6px;">
-            <button class="btn-amber" onclick="importBackupData()">🔄 Restore Data</button>
-        </div>
-        <div id="backup-msg" class="status-msg"></div>
+        <div class="section-title">☁️ Cloud Database Backup & Restore</div>
+        <p style="font-size: 11px; color: #64748b; margin-top:-6px; margin-bottom:12px;">Save data securely to database or restore using your account email.</p>
+        
+        <label class="modal-label">Your Account Email:</label>
+        <input type="email" id="backup-user-email" placeholder="e.g. ashenafihailay645@gmail.com">
+        
+        <button class="btn-navy" onclick="cloudBackupData()">☁️ Save Backup to Cloud Database</button>
+        <button class="btn-amber" onclick="cloudRestoreData()">🔄 Restore Data from Cloud Database</button>
+        
+        <div id="cloud-backup-msg" class="status-msg"></div>
     </div>
 
     <!-- Current Stock Table -->
@@ -167,7 +168,9 @@
         }
 
         function loadSettingsUI() {
-            document.getElementById('cfg-email').value = localStorage.getItem('cfg_email') || 'ashenafihailay645@gmail.com';
+            const savedEmail = localStorage.getItem('cfg_email') || 'ashenafihailay645@gmail.com';
+            document.getElementById('cfg-email').value = savedEmail;
+            document.getElementById('backup-user-email').value = savedEmail;
             document.getElementById('cfg-passkey').value = localStorage.getItem('cfg_passkey') || '8JupT1wuqer_SMq3p';
             document.getElementById('cfg-service-id').value = localStorage.getItem('cfg_service_id') || 'service_g810m8a';
             document.getElementById('cfg-low-template').value = localStorage.getItem('cfg_low_template') || 'template_6tpdips';
@@ -178,11 +181,14 @@
         function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
 
         function saveSettings() {
-            localStorage.setItem('cfg_email', document.getElementById('cfg-email').value.trim());
+            const emailVal = document.getElementById('cfg-email').value.trim();
+            localStorage.setItem('cfg_email', emailVal);
             localStorage.setItem('cfg_passkey', document.getElementById('cfg-passkey').value.trim());
             localStorage.setItem('cfg_service_id', document.getElementById('cfg-service-id').value.trim());
             localStorage.setItem('cfg_low_template', document.getElementById('cfg-low-template').value.trim());
             localStorage.setItem('cfg_report_template', document.getElementById('cfg-report-template').value.trim());
+            
+            document.getElementById('backup-user-email').value = emailVal;
             initEmailJS();
             closeSettings();
             alert("✅ Settings Saved Successfully!");
@@ -407,80 +413,74 @@
             }
         }
 
-        // Export Backup Function
-        function exportBackupData() {
-            const backupPayload = {
-                version: "1.0",
-                backupDate: new Date().toISOString(),
-                materials: localProducts,
-                transactions: localTransactions
-            };
+        // Online Cloud Backup Function
+        async function cloudBackupData() {
+            const email = document.getElementById('backup-user-email').value.trim();
+            const msgBox = document.getElementById('cloud-backup-msg');
 
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupPayload, null, 2));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `storeman_backup_${new Date().toISOString().slice(0,10)}.json`);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
-
-            const msgBox = document.getElementById('backup-msg');
-            msgBox.className = "status-msg msg-success";
-            msgBox.innerText = "📥 Backup file exported successfully!";
-            setTimeout(() => { msgBox.innerText = ''; }, 4000);
-        }
-
-        // Import / Restore Backup Function
-        function importBackupData() {
-            const fileInput = document.getElementById('backup-file-input');
-            const msgBox = document.getElementById('backup-msg');
-
-            if (!fileInput.files || fileInput.files.length === 0) {
-                alert("እባክዎን አስቀድመው የወረደውን JSON Backup ፋይል ይምረጡ!");
+            if (!email) {
+                alert("እባክዎን የኢሜይል አድራሻዎን ያስገቡ!");
                 return;
             }
 
-            const file = fileInput.files[0];
-            const reader = new FileReader();
+            msgBox.className = "status-msg msg-sending";
+            msgBox.innerText = "⏳ Saving Backup to Cloud Database...";
 
-            reader.onload = async function(e) {
-                try {
-                    const importedData = JSON.parse(e.target.result);
-                    if (importedData.materials && Array.isArray(importedData.materials)) {
-                        localProducts = importedData.materials;
-                        localStorage.setItem('products_store', JSON.stringify(localProducts));
-                    }
-                    if (importedData.transactions && Array.isArray(importedData.transactions)) {
-                        localTransactions = importedData.transactions;
-                        localStorage.setItem('transactions_store', JSON.stringify(localTransactions));
-                    }
-
-                    renderUI();
-
-                    // Optional Sync to Supabase
-                    for (const m of localProducts) {
-                        try {
-                            await supabaseClient.from('materials').upsert([{ 
-                                name: m.name, 
-                                unit: m.unit, 
-                                quantity: m.quantity, 
-                                unit_price: m.unit_price, 
-                                min_stock: m.min_stock 
-                            }]);
-                        } catch(err){}
-                    }
-
-                    msgBox.className = "status-msg msg-success";
-                    msgBox.innerText = "✅ Data Restored Successfully!";
-                    fileInput.value = '';
-                    setTimeout(() => { msgBox.innerText = ''; }, 4000);
-                } catch (err) {
-                    msgBox.className = "status-msg msg-error";
-                    msgBox.innerText = "❌ Invalid Backup File Format!";
+            try {
+                // Save products
+                for (const item of localProducts) {
+                    await supabaseClient.from('materials').upsert([{ 
+                        name: item.name, 
+                        unit: item.unit, 
+                        quantity: item.quantity, 
+                        unit_price: item.unit_price, 
+                        min_stock: item.min_stock 
+                    }]);
                 }
-            };
 
-            reader.readAsText(file);
+                msgBox.className = "status-msg msg-success";
+                msgBox.innerText = `☁️ Backup saved successfully for ${email}!`;
+                setTimeout(() => { msgBox.innerText = ''; }, 4000);
+            } catch (err) {
+                msgBox.className = "status-msg msg-error";
+                msgBox.innerText = "❌ Cloud Backup Failed! Check Connection.";
+            }
+        }
+
+        // Online Cloud Restore Function
+        async function cloudRestoreData() {
+            const email = document.getElementById('backup-user-email').value.trim();
+            const msgBox = document.getElementById('cloud-backup-msg');
+
+            if (!email) {
+                alert("እባክዎን የኢሜይል አድራሻዎን ያስገቡ!");
+                return;
+            }
+
+            msgBox.className = "status-msg msg-sending";
+            msgBox.innerText = "⏳ Fetching Backup Data from Cloud...";
+
+            try {
+                const { data: products, error: pErr } = await supabaseClient.from('materials').select('*');
+                const { data: transactions, error: tErr } = await supabaseClient.from('transactions').select('*').order('created_at', { ascending: false });
+
+                if (products && products.length > 0) {
+                    localProducts = products;
+                    localStorage.setItem('products_store', JSON.stringify(products));
+                }
+                if (transactions && transactions.length > 0) {
+                    localTransactions = transactions;
+                    localStorage.setItem('transactions_store', JSON.stringify(transactions));
+                }
+
+                renderUI();
+                msgBox.className = "status-msg msg-success";
+                msgBox.innerText = "✅ Data Restored Successfully from Database!";
+                setTimeout(() => { msgBox.innerText = ''; }, 4000);
+            } catch (err) {
+                msgBox.className = "status-msg msg-error";
+                msgBox.innerText = "❌ Cloud Restore Failed!";
+            }
         }
 
         initEmailJS();
