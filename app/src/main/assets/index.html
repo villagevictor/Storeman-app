@@ -3,100 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Storeman Inventory System</title>
+    <title>Storeman System</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background: #f1f5f9; margin: 0; padding: 12px; color: #1e293b; }
-        .header { background: #0f2b48; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
-        .header h2 { margin: 0; font-size: 18px; }
+        
+        /* Top Navigation Header */
+        .navbar { background: #0f2b48; color: white; padding: 12px 16px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .navbar-title h2 { margin: 0; font-size: 16px; font-weight: bold; }
+        .navbar-title p { margin: 2px 0 0 0; font-size: 11px; color: #94a3b8; }
+        .btn-settings { background: rgba(255, 255, 255, 0.15); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+        
+        /* Stats Dashboard Grid */
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         .card { background: white; padding: 12px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .card-title { font-size: 11px; color: #64748b; font-weight: bold; }
         .card-value { font-size: 20px; font-weight: bold; margin-top: 5px; color: #0f2b48; }
+
+        /* Section Cards */
         .section-card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .section-title { font-size: 16px; font-weight: bold; color: #0f2b48; margin-bottom: 12px; }
-        label { font-size: 12px; color: #64748b; font-weight: bold; display: block; margin-top: 8px; margin-bottom: 4px; }
-        input, select { width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; outline: none; }
-        .btn-primary { width: 100%; padding: 12px; background: #0f2b48; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
-        .btn-report { width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
+        .section-title { font-size: 15px; font-weight: bold; color: #0f2b48; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+        
+        input, select { width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; outline: none; background: #fff; }
+        .btn-navy { width: 100%; padding: 12px; background: #1e3a8a; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; margin-top: 4px; }
+        .btn-green { width: 100%; padding: 12px; background: #059669; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; }
+
+        /* Status Indicators */
+        .status-msg { text-align: center; font-size: 12px; font-weight: bold; margin-top: 8px; padding: 4px; }
+        .msg-sending { color: #d97706; }
+        .msg-success { color: #16a34a; }
+        .msg-error { color: #dc2626; }
+
+        /* Table */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-        th { text-align: left; padding: 8px; color: #64748b; border-bottom: 2px solid #f1f5f9; background: #f8fafc; }
+        th { text-align: left; padding: 8px; color: #64748b; border-bottom: 2px solid #f1f5f9; background: #f8fafc; font-size: 11px; }
         td { padding: 8px; border-bottom: 1px solid #f1f5f9; }
         .badge-ok { color: #16a34a; font-weight: bold; }
         .badge-low { color: #dc2626; font-weight: bold; font-size: 11px; }
         .btn-delete { background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+
+        /* Settings Modal Overlay */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; padding: 15px; }
+        .modal-content { background: white; border-radius: 12px; width: 100%; max-width: 400px; padding: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .modal-title { font-size: 16px; font-weight: bold; color: #0f2b48; display: flex; align-items: center; gap: 6px; }
+        .close-btn { background: none; border: none; font-size: 20px; color: #64748b; cursor: pointer; font-weight: bold; }
+        .modal-label { font-size: 11px; font-weight: bold; color: #1e293b; margin-top: 6px; margin-bottom: 3px; display: block; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h2>📦 Storeman Inventory System</h2>
+    <!-- Header -->
+    <div class="navbar">
+        <div class="navbar-title">
+            <h2>📦 Storeman System</h2>
+            <p>Stock Management Dashboard</p>
+        </div>
+        <button class="btn-settings" onclick="openSettings()">⚙️ Settings</button>
     </div>
 
     <!-- Dashboard Stats -->
     <div class="stats-grid">
         <div class="card"><div class="card-title">Total Materials</div><div class="card-value" id="total-materials">0</div></div>
-        <div class="card"><div class="card-title">Total Stock Qty</div><div class="card-value" id="total-stock">0</div></div>
-        <div class="card"><div class="card-title">Total Valuation (ETB)</div><div class="card-value" id="total-value" style="color:#16a34a;">0.00</div></div>
-        <div class="card"><div class="card-title">Low Stock Alert</div><div class="card-value" id="low-stock" style="color:#dc2626;">0</div></div>
-    </div>
-
-    <!-- Email & API Settings Section -->
-    <div class="section-card">
-        <div class="section-title">⚙️ Email & Notification Settings</div>
-        
-        <label>Store Receiver Email:</label>
-        <input type="email" id="cfg-email" placeholder="e.g. store@example.com" onchange="saveSettings()">
-
-        <label>EmailJS Service ID:</label>
-        <input type="text" id="cfg-service-id" placeholder="e.g. service_xxxxxx" onchange="saveSettings()">
-
-        <label>Template Low Stock Alert ID:</label>
-        <input type="text" id="cfg-low-template" placeholder="e.g. template_low_stock" onchange="saveSettings()">
-
-        <label>Template Daily Report ID:</label>
-        <input type="text" id="cfg-report-template" placeholder="e.g. template_daily_report" onchange="saveSettings()">
-
-        <label>Passkey / Public Key:</label>
-        <input type="text" id="cfg-passkey" placeholder="e.g. user_xxxxxxxxxxxx" onchange="saveSettings()">
+        <div class="card"><div class="card-title">Total Stock</div><div class="card-value" id="total-stock">0</div></div>
+        <div class="card"><div class="card-title">Low Stock</div><div class="card-value" id="low-stock" style="color:#dc2626;">0</div></div>
+        <div class="card"><div class="card-title">Today's Actions</div><div class="card-value" id="today-actions">0</div></div>
     </div>
 
     <!-- Add Material Form -->
     <div class="section-card">
         <div class="section-title">➕ Add Material</div>
-        <input type="text" id="m-name" placeholder="Material name (e.g. Cement)">
-        <input type="text" id="m-unit" placeholder="Unit (e.g. Bag, Pcs, Roll)">
-        <input type="number" id="m-stock" placeholder="Initial stock quantity">
-        <input type="number" id="m-price" step="0.01" placeholder="Unit Price in ETB (e.g. 850.00)">
-        <input type="number" id="m-min" placeholder="Minimum stock limit (Low stock alert threshold)">
-        <button class="btn-primary" onclick="addMaterial()">Add Material</button>
+        <input type="text" id="m-name" placeholder="Material name">
+        <input type="text" id="m-unit" placeholder="Unit">
+        <input type="number" id="m-stock" placeholder="Initial stock">
+        <input type="number" id="m-min" placeholder="Minimum stock">
+        <button class="btn-navy" onclick="addMaterial()">Add Material</button>
+        <div id="add-material-msg" class="status-msg"></div>
     </div>
 
     <!-- Stock In / Stock Out Form -->
     <div class="section-card">
         <div class="section-title">📥 Stock In / 📤 Stock Out</div>
-        <select id="trans-material"><option value="">Select material</option></select>
+        <select id="trans-material"><option value="">-- Select material --</option></select>
+        <select id="trans-type">
+            <option value="IN">Stock In 📥</option>
+            <option value="OUT">Stock Out 📤</option>
+        </select>
         <input type="number" id="trans-qty" placeholder="Quantity">
-        <input type="text" id="trans-ref" placeholder="Reference / Note (Optional)">
-        <div style="display:flex; gap:10px;">
-            <button class="btn-primary" style="background:#16a34a;" onclick="handleStock('IN')">📥 Stock IN</button>
-            <button class="btn-primary" style="background:#dc2626;" onclick="handleStock('OUT')">📤 Stock OUT</button>
-        </div>
+        <input type="text" id="trans-ref" placeholder="Reference / Receipt No.">
+        <button class="btn-navy" onclick="handleStockTransaction()">Save Transaction</button>
+        <div id="stock-trans-msg" class="status-msg"></div>
     </div>
 
-    <!-- Inventory Table -->
+    <!-- Daily Movement Summary Report Section -->
+    <div class="section-card">
+        <div class="section-title">📊 Daily Movement Summary Report</div>
+        <p style="font-size: 11px; color: #64748b; margin-top:-6px; margin-bottom:12px;">Send today's total IN / OUT & Current stock to Email.</p>
+        <button class="btn-green" onclick="sendDailyReport()">📩 Send Today's Daily Report</button>
+        <div id="daily-report-msg" class="status-msg"></div>
+    </div>
+
+    <!-- Current Stock Table -->
     <div class="section-card" style="overflow-x:auto;">
-        <div class="section-title">📋 Stock Inventory</div>
+        <div class="section-title">📦 Current Stock</div>
         <table>
             <thead>
                 <tr>
                     <th>Material</th>
                     <th>Unit</th>
-                    <th>Qty</th>
-                    <th>Unit Price</th>
-                    <th>Total Value</th>
+                    <th>Stock</th>
+                    <th>Min</th>
                     <th>Status</th>
                     <th>Action</th>
                 </tr>
@@ -105,22 +123,31 @@
         </table>
     </div>
 
-    <!-- Transaction History -->
-    <div class="section-card" style="overflow-x:auto;">
-        <div class="section-title">📜 Transaction History</div>
-        <button class="btn-report" onclick="sendDailyReport()">📊 Send Daily Stock IN/OUT Email Report</button>
-        <table>
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Material</th>
-                    <th>Type</th>
-                    <th>Qty</th>
-                    <th>Total Value</th>
-                </tr>
-            </thead>
-            <tbody id="transaction-list"></tbody>
-        </table>
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">⚙️ EmailJS Settings</div>
+                <button class="close-btn" onclick="closeSettings()">&times;</button>
+            </div>
+            
+            <span class="modal-label">Receiver Email:</span>
+            <input type="email" id="cfg-email" placeholder="e.g. ashenafihailay645@gmail.com">
+
+            <span class="modal-label">Public Key (Passkey):</span>
+            <input type="text" id="cfg-passkey" placeholder="e.g. 8JupT1wuqer_SMq3p">
+
+            <span class="modal-label">Service ID:</span>
+            <input type="text" id="cfg-service-id" placeholder="e.g. service_g810m8a">
+
+            <span class="modal-label">Low Stock Template ID:</span>
+            <input type="text" id="cfg-low-template" placeholder="e.g. template_6tpdips">
+
+            <span class="modal-label">Daily Report Template ID:</span>
+            <input type="text" id="cfg-report-template" placeholder="e.g. template_tqgxj1w">
+
+            <button class="btn-navy" style="margin-top:10px;" onclick="saveSettings()">Save Configuration</button>
+        </div>
     </div>
 
     <script>
@@ -131,20 +158,39 @@
         let localProducts = JSON.parse(localStorage.getItem('products_store') || '[]');
         let localTransactions = JSON.parse(localStorage.getItem('transactions_store') || '[]');
 
-        function loadSettings() {
+        function initEmailJS() {
+            const passkey = localStorage.getItem('cfg_passkey') || '8JupT1wuqer_SMq3p';
+            if (passkey && typeof emailjs !== 'undefined') {
+                emailjs.init(passkey);
+            }
+        }
+
+        function loadSettingsUI() {
             document.getElementById('cfg-email').value = localStorage.getItem('cfg_email') || 'ashenafihailay645@gmail.com';
-            document.getElementById('cfg-service-id').value = localStorage.getItem('cfg_service_id') || '';
-            document.getElementById('cfg-low-template').value = localStorage.getItem('cfg_low_template') || '';
-            document.getElementById('cfg-report-template').value = localStorage.getItem('cfg_report_template') || '';
-            document.getElementById('cfg-passkey').value = localStorage.getItem('cfg_passkey') || '';
+            document.getElementById('cfg-passkey').value = localStorage.getItem('cfg_passkey') || '8JupT1wuqer_SMq3p';
+            document.getElementById('cfg-service-id').value = localStorage.getItem('cfg_service_id') || 'service_g810m8a';
+            document.getElementById('cfg-low-template').value = localStorage.getItem('cfg_low_template') || 'template_6tpdips';
+            document.getElementById('cfg-report-template').value = localStorage.getItem('cfg_report_template') || 'template_tqgxj1w';
+        }
+
+        function openSettings() {
+            loadSettingsUI();
+            document.getElementById('settingsModal').style.display = 'flex';
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').style.display = 'none';
         }
 
         function saveSettings() {
             localStorage.setItem('cfg_email', document.getElementById('cfg-email').value.trim());
+            localStorage.setItem('cfg_passkey', document.getElementById('cfg-passkey').value.trim());
             localStorage.setItem('cfg_service_id', document.getElementById('cfg-service-id').value.trim());
             localStorage.setItem('cfg_low_template', document.getElementById('cfg-low-template').value.trim());
             localStorage.setItem('cfg_report_template', document.getElementById('cfg-report-template').value.trim());
-            localStorage.setItem('cfg_passkey', document.getElementById('cfg-passkey').value.trim());
+            initEmailJS();
+            closeSettings();
+            alert("✅ Settings Saved Successfully!");
         }
 
         async function loadData() {
@@ -166,87 +212,86 @@
         }
 
         function renderUI() {
-            let totalStock = 0, totalValuation = 0, lowStockCount = 0;
-            let productOptions = '<option value="">Select material</option>';
+            let totalStock = 0, lowStockCount = 0;
+            let productOptions = '<option value="">-- Select material --</option>';
             let inventoryHTML = '';
 
             localProducts.forEach(item => {
                 const qty = parseInt(item.quantity) || 0;
                 const min = parseInt(item.min_stock) || 0;
-                const price = parseFloat(item.unit_price) || 0;
-                const totalItemValue = qty * price;
 
                 totalStock += qty;
-                totalValuation += totalItemValue;
                 const isLow = qty <= min;
                 if (isLow) lowStockCount++;
 
-                productOptions += `<option value="${item.id}">${item.name}</option>`;
+                productOptions += `<option value="${item.id}">${item.name} (${qty} ${item.unit || 'N'})</option>`;
                 inventoryHTML += `
                     <tr>
                         <td><b>${item.name}</b></td>
                         <td>${item.unit || 'Pcs'}</td>
                         <td><b>${qty}</b></td>
-                        <td>ETB ${price.toFixed(2)}</td>
-                        <td><b>ETB ${totalItemValue.toFixed(2)}</b></td>
+                        <td>${min}</td>
                         <td>${isLow ? '<span class="badge-low">⚠️ LOW STOCK</span>' : '<span class="badge-ok">✓ OK</span>'}</td>
                         <td><button class="btn-delete" onclick="deleteMaterial('${item.id}')">Delete</button></td>
                     </tr>`;
             });
 
+            const todayStr = new Date().toDateString();
+            const todayActionsCount = localTransactions.filter(t => new Date(t.created_at).toDateString() === todayStr).length;
+
             document.getElementById('total-materials').innerText = localProducts.length;
             document.getElementById('total-stock').innerText = totalStock;
-            document.getElementById('total-value').innerText = totalValuation.toLocaleString('en-US', { minimumFractionDigits: 2 });
             document.getElementById('low-stock').innerText = lowStockCount;
+            document.getElementById('today-actions').innerText = todayActionsCount;
 
-            document.getElementById('inventory-list').innerHTML = inventoryHTML || '<tr><td colspan="7">No materials.</td></tr>';
+            document.getElementById('inventory-list').innerHTML = inventoryHTML || '<tr><td colspan="6">No materials registered.</td></tr>';
             document.getElementById('trans-material').innerHTML = productOptions;
-
-            let transHTML = '';
-            localTransactions.forEach(t => {
-                const date = t.created_at ? new Date(t.created_at).toLocaleString() : 'Just now';
-                const tPrice = parseFloat(t.unit_price) || 0;
-                const tQty = parseInt(t.quantity) || 0;
-                transHTML += `
-                    <tr>
-                        <td style="font-size:11px; color:#64748b;">${date}</td>
-                        <td><b>${t.material_name}</b></td>
-                        <td style="color:${t.type === 'IN' ? '#16a34a' : '#dc2626'}; font-weight:bold;">${t.type === 'IN' ? '📥 IN' : '📤 OUT'}</td>
-                        <td><b>${tQty}</b></td>
-                        <td>ETB ${(tPrice * tQty).toFixed(2)}</td>
-                    </tr>`;
-            });
-            document.getElementById('transaction-list').innerHTML = transHTML || '<tr><td colspan="5">No transactions.</td></tr>';
         }
 
         async function addMaterial() {
             const name = document.getElementById('m-name').value.trim();
-            const unit = document.getElementById('m-unit').value.trim() || 'Pcs';
+            const unit = document.getElementById('m-unit').value.trim() || 'N';
             const quantity = parseInt(document.getElementById('m-stock').value) || 0;
-            const unit_price = parseFloat(document.getElementById('m-price').value) || 0;
             const min_stock = parseInt(document.getElementById('m-min').value) || 0;
+            const msgBox = document.getElementById('add-material-msg');
 
             if(!name) { alert("እባክዎን የዕቃውን ስም ያስገቡ!"); return; }
 
-            const newProduct = { id: 'prod_' + Date.now(), name, unit, quantity, unit_price, min_stock, created_at: new Date().toISOString() };
+            const newProduct = { id: 'prod_' + Date.now(), name, unit, quantity, min_stock, created_at: new Date().toISOString() };
             localProducts.push(newProduct);
             localStorage.setItem('products_store', JSON.stringify(localProducts));
             renderUI();
 
-            try { await supabaseClient.from('materials').insert([{ name, unit, quantity, unit_price, min_stock }]); } catch(e){}
+            try { await supabaseClient.from('materials').insert([{ name, unit, quantity, min_stock }]); } catch(e){}
 
             document.getElementById('m-name').value = '';
             document.getElementById('m-unit').value = '';
             document.getElementById('m-stock').value = '';
-            document.getElementById('m-price').value = '';
             document.getElementById('m-min').value = '';
-            alert("✅ ዕቃው በትክክል ተመዝግቧል!");
+
+            if (quantity <= min_stock) {
+                triggerLowStockAlert({
+                    material_name: name,
+                    current_stock: quantity,
+                    unit: unit,
+                    minimum_stock: min_stock,
+                    type: 'INITIAL',
+                    quantity: quantity,
+                    reference: 'Initial Setup'
+                }, msgBox);
+            } else {
+                msgBox.className = "status-msg msg-success";
+                msgBox.innerText = "✅ ዕቃው በትክክል ተመዝግቧል!";
+                setTimeout(() => { msgBox.innerText = ''; }, 4000);
+            }
         }
 
-        async function handleStock(type) {
+        async function handleStockTransaction() {
             const pId = document.getElementById('trans-material').value;
+            const type = document.getElementById('trans-type').value;
             const qty = parseInt(document.getElementById('trans-qty').value);
             const ref = document.getElementById('trans-ref').value || '-';
+            const msgBox = document.getElementById('stock-trans-msg');
 
             if (!pId || !qty || qty <= 0) { alert("እባክዎን ዕቃ እና መጠን ያስገቡ!"); return; }
 
@@ -259,52 +304,48 @@
             product.quantity = newQty;
             localStorage.setItem('products_store', JSON.stringify(localProducts));
 
-            const currentDateStr = new Date().toLocaleString();
-            const newTrans = { id: 'trans_' + Date.now(), material_name: product.name, type, quantity: qty, unit_price: product.unit_price || 0, reference: ref, created_at: new Date().toISOString() };
+            const newTrans = { id: 'trans_' + Date.now(), material_name: product.name, type, quantity: qty, reference: ref, created_at: new Date().toISOString() };
             localTransactions.unshift(newTrans);
             localStorage.setItem('transactions_store', JSON.stringify(localTransactions));
             renderUI();
 
+            try {
+                await supabaseClient.from('materials').update({ quantity: newQty }).eq('name', product.name);
+                await supabaseClient.from('transactions').insert([{ material_name: product.name, type, quantity: qty, reference: ref }]);
+            } catch(e){}
+
+            document.getElementById('trans-qty').value = '';
+            document.getElementById('trans-ref').value = '';
+
             if (newQty <= (product.min_stock || 0)) {
-                sendLowStockAlert({
+                triggerLowStockAlert({
                     material_name: product.name,
                     current_stock: newQty,
                     unit: product.unit || 'Pcs',
                     minimum_stock: product.min_stock || 0,
                     type: type,
                     quantity: qty,
-                    reference: ref,
-                    date: currentDateStr
-                });
-            }
-
-            try {
-                await supabaseClient.from('materials').update({ quantity: newQty }).eq('name', product.name);
-                await supabaseClient.from('transactions').insert([{ material_name: product.name, type, quantity: qty, unit_price: product.unit_price, reference: ref }]);
-            } catch(e){}
-
-            document.getElementById('trans-qty').value = '';
-            document.getElementById('trans-ref').value = '';
-            alert(`✅ Stock ${type} በትክክል ተመዝግቧል!`);
-        }
-
-        async function deleteMaterial(id) {
-            if (confirm("ይህንን ዕቃ መሰረዝ እርግጠኛ ነዎት?")) {
-                const prod = localProducts.find(p => p.id == id);
-                localProducts = localProducts.filter(p => p.id != id);
-                localStorage.setItem('products_store', JSON.stringify(localProducts));
-                renderUI();
-                if (prod) { try { await supabaseClient.from('materials').delete().eq('name', prod.name); } catch(e){} }
+                    reference: ref
+                }, msgBox);
+            } else {
+                msgBox.className = "status-msg msg-success";
+                msgBox.innerText = `✅ Stock ${type} Saved Successfully!`;
+                setTimeout(() => { msgBox.innerText = ''; }, 4000);
             }
         }
 
-        function sendLowStockAlert(params) {
+        function triggerLowStockAlert(params, targetMsgDiv) {
             const email = localStorage.getItem('cfg_email') || 'ashenafihailay645@gmail.com';
-            const serviceId = localStorage.getItem('cfg_service_id');
-            const templateId = localStorage.getItem('cfg_low_template');
-            const passkey = localStorage.getItem('cfg_passkey');
+            const serviceId = localStorage.getItem('cfg_service_id') || 'service_g810m8a';
+            const templateId = localStorage.getItem('cfg_low_template') || 'template_6tpdips';
+            const passkey = localStorage.getItem('cfg_passkey') || '8JupT1wuqer_SMq3p';
 
-            const alertText = `⚠️ LOW STOCK ALERT\nMaterial Name: ${params.material_name}\nCurrent Stock: ${params.current_stock} ${params.unit}\nMinimum Stock Threshold: ${params.minimum_stock} ${params.unit}\n\nTransaction Details:\nType: ${params.type}\nQuantity: ${params.quantity}\nReference: ${params.reference}\nDate: ${params.date}\n\nPlease restock this material as soon as possible.\nStoreman Inventory System`;
+            if (targetMsgDiv) {
+                targetMsgDiv.className = "status-msg msg-sending";
+                targetMsgDiv.innerText = "⏳ Sending Low Stock Alert Email...";
+            }
+
+            const alertText = `⚠️ LOW STOCK ALERT\nMaterial Name: ${params.material_name}\nCurrent Stock: ${params.current_stock} ${params.unit}\nMinimum Stock Threshold: ${params.minimum_stock} ${params.unit}\n\nTransaction Details:\nType: ${params.type}\nQuantity: ${params.quantity}\nReference: ${params.reference}\nDate: ${new Date().toLocaleString()}\n\nPlease restock this material as soon as possible.\nStoreman Inventory System`;
 
             if (serviceId && templateId && passkey && typeof emailjs !== 'undefined') {
                 emailjs.send(serviceId, templateId, {
@@ -316,19 +357,37 @@
                     type: params.type,
                     quantity: params.quantity,
                     reference: params.reference,
-                    date: params.date,
+                    date: new Date().toLocaleString(),
                     message: alertText
-                }, passkey);
+                }, passkey).then(() => {
+                    if (targetMsgDiv) {
+                        targetMsgDiv.className = "status-msg msg-success";
+                        targetMsgDiv.innerText = "⚠️ Low Stock Alert Email Sent!";
+                    }
+                }).catch((err) => {
+                    console.log("EmailJS Error:", err);
+                    if (targetMsgDiv) {
+                        targetMsgDiv.className = "status-msg msg-error";
+                        targetMsgDiv.innerText = "❌ Email Sending Failed!";
+                    }
+                });
             } else {
-                window.location.href = `mailto:${email}?subject=${encodeURIComponent("⚠️ LOW STOCK ALERT: " + params.material_name)}&body=${encodeURIComponent(alertText)}`;
+                if (targetMsgDiv) {
+                    targetMsgDiv.className = "status-msg msg-error";
+                    targetMsgDiv.innerText = "⚠️ EmailJS settings missing!";
+                }
             }
         }
 
         function sendDailyReport() {
             const email = localStorage.getItem('cfg_email') || 'ashenafihailay645@gmail.com';
-            const serviceId = localStorage.getItem('cfg_service_id');
-            const templateId = localStorage.getItem('cfg_report_template');
-            const passkey = localStorage.getItem('cfg_passkey');
+            const serviceId = localStorage.getItem('cfg_service_id') || 'service_g810m8a';
+            const templateId = localStorage.getItem('cfg_report_template') || 'template_tqgxj1w';
+            const passkey = localStorage.getItem('cfg_passkey') || '8JupT1wuqer_SMq3p';
+            const msgBox = document.getElementById('daily-report-msg');
+
+            msgBox.className = "status-msg msg-sending";
+            msgBox.innerText = "⏳ Sending Daily Summary Report...";
 
             let totalIn = 0, totalOut = 0;
             let reportDetails = '';
@@ -354,14 +413,22 @@
                     total_items: localProducts.length,
                     report_details: reportDetails,
                     message: reportText
-                }, passkey);
-                alert("✅ Daily Report Email Sent!");
+                }, passkey).then(() => {
+                    msgBox.className = "status-msg msg-success";
+                    msgBox.innerText = "✅ Daily Summary Report Sent Successfully!";
+                }).catch((err) => {
+                    console.log("EmailJS Daily Report Error:", err);
+                    msgBox.className = "status-msg msg-error";
+                    msgBox.innerText = "❌ Report Sending Failed!";
+                });
             } else {
-                window.location.href = `mailto:${email}?subject=${encodeURIComponent("📊 STOREMAN DAILY INVENTORY REPORT")}&body=${encodeURIComponent(reportText)}`;
+                msgBox.className = "status-msg msg-error";
+                msgBox.innerText = "⚠️ EmailJS settings missing!";
             }
         }
 
-        loadSettings();
+        initEmailJS();
+        loadSettingsUI();
         loadData();
     </script>
 </body>
