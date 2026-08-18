@@ -350,20 +350,29 @@
             msgBox.className = "status-msg msg-sending";
             msgBox.innerText = "⏳ Sending Daily Summary Report...";
 
-            let totalIn = 0, totalOut = 0;
+            let totalIn = 0, totalOut = 0, totalValuation = 0;
             let reportDetails = '';
+
+            localProducts.forEach(item => {
+                const qty = parseInt(item.quantity) || 0;
+                const price = parseFloat(item.unit_price) || 0;
+                totalValuation += (qty * price);
+            });
 
             localTransactions.forEach(t => {
                 const qty = parseInt(t.quantity) || 0;
+                const uPrice = parseFloat(t.unit_price) || 0;
+                const totalPrice = qty * uPrice;
+
                 if(t.type === 'IN') totalIn += qty;
                 if(t.type === 'OUT') totalOut += qty;
-                reportDetails += `• ${t.material_name} | Type: ${t.type} | Qty: ${qty} | Ref: ${t.reference || '-'}\n`;
+
+                reportDetails += `• ${t.material_name} | Type: ${t.type} | Qty: ${qty} | Unit Price: ETB ${uPrice.toFixed(2)} | Total Price: ETB ${totalPrice.toFixed(2)} | Ref: ${t.reference || '-'}\n`;
             });
 
             if (!reportDetails) reportDetails = 'No movements recorded today.';
 
             const reportDateStr = new Date().toLocaleDateString();
-            const reportText = `📊 STOREMAN DAILY INVENTORY REPORT\nDate: ${reportDateStr}\n----------------------------------------\nTotal Stock IN Today: ${totalIn}\nTotal Stock OUT Today: ${totalOut}\nActive Materials: ${localProducts.length}\n----------------------------------------\nMOVEMENTS:\n${reportDetails}`;
 
             if (serviceId && templateId && passkey && typeof emailjs !== 'undefined') {
                 emailjs.send(serviceId, templateId, {
@@ -371,9 +380,9 @@
                     report_date: reportDateStr,
                     total_in: totalIn,
                     total_out: totalOut,
+                    total_valuation: totalValuation.toLocaleString('en-US', { minimumFractionDigits: 2 }),
                     total_items: localProducts.length,
-                    report_details: reportDetails,
-                    message: reportText
+                    report_details: reportDetails
                 }, passkey).then(() => {
                     msgBox.className = "status-msg msg-success";
                     msgBox.innerText = "✅ Daily Summary Report Sent Successfully!";
