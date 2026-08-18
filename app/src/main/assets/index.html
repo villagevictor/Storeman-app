@@ -26,6 +26,7 @@
         input, select { width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; outline: none; background: #fff; }
         .btn-navy { width: 100%; padding: 12px; background: #1e3a8a; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; margin-top: 4px; }
         .btn-green { width: 100%; padding: 12px; background: #059669; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; }
+        .btn-amber { width: 100%; padding: 12px; background: #d97706; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; margin-top: 8px; }
 
         .status-msg { text-align: center; font-size: 12px; font-weight: bold; margin-top: 8px; }
         .msg-sending { color: #d97706; }
@@ -40,7 +41,7 @@
         .btn-delete { background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; }
 
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; padding: 15px; }
-        .modal-content { background: white; border-radius: 12px; width: 100%; max-width: 400px; padding: 18px; }
+        .modal-content { background: white; border-radius: 12px; width: 100%; max-width: 400px; padding: 18px; max-height: 90vh; overflow-y: auto; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
         .close-btn { background: none; border: none; font-size: 20px; color: #64748b; cursor: pointer; }
         .modal-label { font-size: 11px; font-weight: bold; color: #1e293b; margin-top: 6px; display: block; }
@@ -97,6 +98,19 @@
         <p style="font-size: 11px; color: #64748b; margin-top:-6px; margin-bottom:12px;">Send today's summary & inventory report to email.</p>
         <button class="btn-green" onclick="sendDailyReport()">📩 Send Today's Daily Report</button>
         <div id="daily-report-msg" class="status-msg"></div>
+    </div>
+
+    <!-- Backup & Restore Data Section -->
+    <div class="section-card">
+        <div class="section-title">💾 Data Backup & Restore</div>
+        <p style="font-size: 11px; color: #64748b; margin-top:-6px; margin-bottom:12px;">Export inventory data to file or restore from previous backup.</p>
+        <button class="btn-navy" onclick="exportBackupData()">📥 Download JSON Backup</button>
+        <div style="margin-top:12px;">
+            <label class="modal-label">Restore Data from Backup File (.json):</label>
+            <input type="file" id="backup-file-input" accept=".json" style="padding: 6px;">
+            <button class="btn-amber" onclick="importBackupData()">🔄 Restore Data</button>
+        </div>
+        <div id="backup-msg" class="status-msg"></div>
     </div>
 
     <!-- Current Stock Table -->
@@ -391,6 +405,82 @@
                     msgBox.innerText = "❌ Report Sending Failed!";
                 });
             }
+        }
+
+        // Export Backup Function
+        function exportBackupData() {
+            const backupPayload = {
+                version: "1.0",
+                backupDate: new Date().toISOString(),
+                materials: localProducts,
+                transactions: localTransactions
+            };
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupPayload, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `storeman_backup_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+
+            const msgBox = document.getElementById('backup-msg');
+            msgBox.className = "status-msg msg-success";
+            msgBox.innerText = "📥 Backup file exported successfully!";
+            setTimeout(() => { msgBox.innerText = ''; }, 4000);
+        }
+
+        // Import / Restore Backup Function
+        function importBackupData() {
+            const fileInput = document.getElementById('backup-file-input');
+            const msgBox = document.getElementById('backup-msg');
+
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert("እባክዎን አስቀድመው የወረደውን JSON Backup ፋይል ይምረጡ!");
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = async function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (importedData.materials && Array.isArray(importedData.materials)) {
+                        localProducts = importedData.materials;
+                        localStorage.setItem('products_store', JSON.stringify(localProducts));
+                    }
+                    if (importedData.transactions && Array.isArray(importedData.transactions)) {
+                        localTransactions = importedData.transactions;
+                        localStorage.setItem('transactions_store', JSON.stringify(localTransactions));
+                    }
+
+                    renderUI();
+
+                    // Optional Sync to Supabase
+                    for (const m of localProducts) {
+                        try {
+                            await supabaseClient.from('materials').upsert([{ 
+                                name: m.name, 
+                                unit: m.unit, 
+                                quantity: m.quantity, 
+                                unit_price: m.unit_price, 
+                                min_stock: m.min_stock 
+                            }]);
+                        } catch(err){}
+                    }
+
+                    msgBox.className = "status-msg msg-success";
+                    msgBox.innerText = "✅ Data Restored Successfully!";
+                    fileInput.value = '';
+                    setTimeout(() => { msgBox.innerText = ''; }, 4000);
+                } catch (err) {
+                    msgBox.className = "status-msg msg-error";
+                    msgBox.innerText = "❌ Invalid Backup File Format!";
+                }
+            };
+
+            reader.readAsText(file);
         }
 
         initEmailJS();
