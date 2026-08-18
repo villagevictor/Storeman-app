@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Storeman Inventory System</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background: #f1f5f9; margin: 0; padding: 12px; color: #1e293b; }
@@ -16,7 +17,8 @@
         .card-value { font-size: 20px; font-weight: bold; margin-top: 5px; color: #0f2b48; }
         .section-card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .section-title { font-size: 16px; font-weight: bold; color: #0f2b48; margin-bottom: 12px; }
-        input, select { width: 100%; padding: 11px; margin-bottom: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; outline: none; }
+        label { font-size: 12px; color: #64748b; font-weight: bold; display: block; margin-top: 8px; margin-bottom: 4px; }
+        input, select { width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; outline: none; }
         .btn-primary { width: 100%; padding: 12px; background: #0f2b48; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
         .btn-report { width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
@@ -41,11 +43,24 @@
         <div class="card"><div class="card-title">Low Stock Alert</div><div class="card-value" id="low-stock" style="color:#dc2626;">0</div></div>
     </div>
 
-    <!-- Settings Section -->
+    <!-- Email & API Settings Section -->
     <div class="section-card">
-        <div class="section-title">⚙️ Notification Settings</div>
-        <label style="font-size:12px; color:#64748b; font-weight:bold;">Alert & Report Receiver Email:</label>
-        <input type="email" id="user-email" value="ashenafihailay645@gmail.com" placeholder="Enter Notification Email" style="margin-top:5px;" onchange="saveEmail(this.value)">
+        <div class="section-title">⚙️ Email & Notification Settings</div>
+        
+        <label>Store Receiver Email:</label>
+        <input type="email" id="cfg-email" placeholder="e.g. store@example.com" onchange="saveSettings()">
+
+        <label>EmailJS Service ID:</label>
+        <input type="text" id="cfg-service-id" placeholder="e.g. service_xxxxxx" onchange="saveSettings()">
+
+        <label>Template Low Stock Alert ID:</label>
+        <input type="text" id="cfg-low-template" placeholder="e.g. template_low_stock" onchange="saveSettings()">
+
+        <label>Template Daily Report ID:</label>
+        <input type="text" id="cfg-report-template" placeholder="e.g. template_daily_report" onchange="saveSettings()">
+
+        <label>Passkey / Public Key:</label>
+        <input type="text" id="cfg-passkey" placeholder="e.g. user_xxxxxxxxxxxx" onchange="saveSettings()">
     </div>
 
     <!-- Add Material Form -->
@@ -116,11 +131,20 @@
         let localProducts = JSON.parse(localStorage.getItem('products_store') || '[]');
         let localTransactions = JSON.parse(localStorage.getItem('transactions_store') || '[]');
 
-        const savedEmail = localStorage.getItem('alert_email');
-        if (savedEmail) document.getElementById('user-email').value = savedEmail;
+        function loadSettings() {
+            document.getElementById('cfg-email').value = localStorage.getItem('cfg_email') || 'ashenafihailay645@gmail.com';
+            document.getElementById('cfg-service-id').value = localStorage.getItem('cfg_service_id') || '';
+            document.getElementById('cfg-low-template').value = localStorage.getItem('cfg_low_template') || '';
+            document.getElementById('cfg-report-template').value = localStorage.getItem('cfg_report_template') || '';
+            document.getElementById('cfg-passkey').value = localStorage.getItem('cfg_passkey') || '';
+        }
 
-        function saveEmail(val) {
-            localStorage.setItem('alert_email', val);
+        function saveSettings() {
+            localStorage.setItem('cfg_email', document.getElementById('cfg-email').value.trim());
+            localStorage.setItem('cfg_service_id', document.getElementById('cfg-service-id').value.trim());
+            localStorage.setItem('cfg_low_template', document.getElementById('cfg-low-template').value.trim());
+            localStorage.setItem('cfg_report_template', document.getElementById('cfg-report-template').value.trim());
+            localStorage.setItem('cfg_passkey', document.getElementById('cfg-passkey').value.trim());
         }
 
         async function loadData() {
@@ -235,13 +259,23 @@
             product.quantity = newQty;
             localStorage.setItem('products_store', JSON.stringify(localProducts));
 
+            const currentDateStr = new Date().toLocaleString();
             const newTrans = { id: 'trans_' + Date.now(), material_name: product.name, type, quantity: qty, unit_price: product.unit_price || 0, reference: ref, created_at: new Date().toISOString() };
             localTransactions.unshift(newTrans);
             localStorage.setItem('transactions_store', JSON.stringify(localTransactions));
             renderUI();
 
             if (newQty <= (product.min_stock || 0)) {
-                sendEmailAlert(`⚠️ LOW STOCK ALERT: ${product.name}`, `ዕቃዉ አብቅቷል/አንሷል! \nዕቃ: ${product.name}\nቀሪ መጠን: ${newQty} ${product.unit}\nዝቅተኛ ወሰን: ${product.min_stock}`);
+                sendLowStockAlert({
+                    material_name: product.name,
+                    current_stock: newQty,
+                    unit: product.unit || 'Pcs',
+                    minimum_stock: product.min_stock || 0,
+                    type: type,
+                    quantity: qty,
+                    reference: ref,
+                    date: currentDateStr
+                });
             }
 
             try {
@@ -264,26 +298,70 @@
             }
         }
 
-        function sendEmailAlert(subject, body) {
-            const email = document.getElementById('user-email').value || 'ashenafihailay645@gmail.com';
-            window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        function sendLowStockAlert(params) {
+            const email = localStorage.getItem('cfg_email') || 'ashenafihailay645@gmail.com';
+            const serviceId = localStorage.getItem('cfg_service_id');
+            const templateId = localStorage.getItem('cfg_low_template');
+            const passkey = localStorage.getItem('cfg_passkey');
+
+            const alertText = `⚠️ LOW STOCK ALERT\nMaterial Name: ${params.material_name}\nCurrent Stock: ${params.current_stock} ${params.unit}\nMinimum Stock Threshold: ${params.minimum_stock} ${params.unit}\n\nTransaction Details:\nType: ${params.type}\nQuantity: ${params.quantity}\nReference: ${params.reference}\nDate: ${params.date}\n\nPlease restock this material as soon as possible.\nStoreman Inventory System`;
+
+            if (serviceId && templateId && passkey && typeof emailjs !== 'undefined') {
+                emailjs.send(serviceId, templateId, {
+                    to_email: email,
+                    material_name: params.material_name,
+                    current_stock: params.current_stock,
+                    unit: params.unit,
+                    minimum_stock: params.minimum_stock,
+                    type: params.type,
+                    quantity: params.quantity,
+                    reference: params.reference,
+                    date: params.date,
+                    message: alertText
+                }, passkey);
+            } else {
+                window.location.href = `mailto:${email}?subject=${encodeURIComponent("⚠️ LOW STOCK ALERT: " + params.material_name)}&body=${encodeURIComponent(alertText)}`;
+            }
         }
 
         function sendDailyReport() {
-            const email = document.getElementById('user-email').value || 'ashenafihailay645@gmail.com';
-            let totalIn = 0, totalOut = 0, totalValIn = 0, totalValOut = 0;
+            const email = localStorage.getItem('cfg_email') || 'ashenafihailay645@gmail.com';
+            const serviceId = localStorage.getItem('cfg_service_id');
+            const templateId = localStorage.getItem('cfg_report_template');
+            const passkey = localStorage.getItem('cfg_passkey');
+
+            let totalIn = 0, totalOut = 0;
+            let reportDetails = '';
 
             localTransactions.forEach(t => {
-                const price = parseFloat(t.unit_price) || 0;
                 const qty = parseInt(t.quantity) || 0;
-                if(t.type === 'IN') { totalIn += qty; totalValIn += (qty * price); }
-                if(t.type === 'OUT') { totalOut += qty; totalValOut += (qty * price); }
+                if(t.type === 'IN') totalIn += qty;
+                if(t.type === 'OUT') totalOut += qty;
+                reportDetails += `• ${t.material_name} | Type: ${t.type} | Qty: ${qty} | Ref: ${t.reference || '-'}\n`;
             });
 
-            const reportBody = `📊 DAILY INVENTORY REPORT\n--------------------------------\nየገባ አጠቃላይ እቃ: ${totalIn} (ዋጋ: ETB ${totalValIn.toFixed(2)})\nየወጣ አጠቃላይ እቃ: ${totalOut} (ዋጋ: ETB ${totalValOut.toFixed(2)})\nየእንቅስቃሴዎች ብዛት: ${localTransactions.length}\n\nGenerated by Storeman App`;
-            window.location.href = `mailto:${email}?subject=${encodeURIComponent("📊 Daily Storeman Inventory Report")}&body=${encodeURIComponent(reportBody)}`;
+            if (!reportDetails) reportDetails = 'No movements recorded today.';
+
+            const reportDateStr = new Date().toLocaleDateString();
+            const reportText = `📊 STOREMAN DAILY INVENTORY REPORT\nDate: ${reportDateStr}\n----------------------------------------\nSUMMARY OF TODAY'S MOVEMENT:\n----------------------------------------\n📥 Total Stock IN Today: ${totalIn}\n📤 Total Stock OUT Today: ${totalOut}\n📦 Active Materials Count: ${localProducts.length}\n----------------------------------------\nDETAILED MATERIAL MOVEMENTS:\n----------------------------------------\n${reportDetails}----------------------------------------\nStoreman Inventory Management System`;
+
+            if (serviceId && templateId && passkey && typeof emailjs !== 'undefined') {
+                emailjs.send(serviceId, templateId, {
+                    to_email: email,
+                    report_date: reportDateStr,
+                    total_in: totalIn,
+                    total_out: totalOut,
+                    total_items: localProducts.length,
+                    report_details: reportDetails,
+                    message: reportText
+                }, passkey);
+                alert("✅ Daily Report Email Sent!");
+            } else {
+                window.location.href = `mailto:${email}?subject=${encodeURIComponent("📊 STOREMAN DAILY INVENTORY REPORT")}&body=${encodeURIComponent(reportText)}`;
+            }
         }
 
+        loadSettings();
         loadData();
     </script>
 </body>
