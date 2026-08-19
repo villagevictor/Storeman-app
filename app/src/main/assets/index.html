@@ -132,7 +132,7 @@
             <input type="number" id="so-qty" placeholder="Quantity Out">
             <input type="text" id="so-inv" placeholder="Invoice No. (e.g. INV-1001)">
         </div>
-        <button class="btn-green" onclick="processSalesOrder()">🧾 Generate Invoice & Send Receipt</button>
+        <button class="btn-green" onclick="processSalesOrder()">🧾 Save to Supabase & Send WhatsApp</button>
         <div id="so-msg" class="status-msg"></div>
     </div>
 
@@ -407,6 +407,9 @@
             let product = localProducts[idx];
             if(parseInt(product.quantity) < qty) return alert("Insufficient Stock Available!");
 
+            msgBox.className = "status-msg msg-sending";
+            msgBox.innerText = "⏳ Saving transaction to Supabase Database...";
+
             product.quantity = parseInt(product.quantity) - qty;
             const totalAmount = qty * parseFloat(product.unit_price || 0);
 
@@ -417,10 +420,17 @@
             localStorage.setItem('transactions_store', JSON.stringify(localTransactions));
             renderUI();
 
+            // Save Sales Data directly into Supabase
             try {
                 await supabaseClient.from('materials').update({ quantity: product.quantity }).eq('name', product.name);
+                await supabaseClient.from('transactions').insert([{ material_name: product.name, type: 'OUT', quantity: qty, unit_price: product.unit_price, reference: inv }]);
                 await supabaseClient.from('sales_orders').insert([{ customer_name: customer, total_amount: totalAmount, invoice_number: inv }]);
-            } catch(e){}
+            } catch(e){
+                console.log("Supabase save warning: ", e);
+            }
+
+            msgBox.className = "status-msg msg-success";
+            msgBox.innerText = "✅ Data Saved to Supabase!";
 
             // Low Stock Check
             if (product.quantity <= (product.min_stock || 0)) {
@@ -487,7 +497,7 @@
             
             let whatsappUrl = `https://wa.me/${phone}?text=${encodedMessage}`;
             if (!phone) {
-                whatsappUrl = `https://wa.me/?text=${encodedMessage}`; // If no phone, just share to WhatsApp
+                whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
             }
 
             window.open(whatsappUrl, '_blank');
