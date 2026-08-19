@@ -26,6 +26,7 @@
         input, select { width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; outline: none; background: #fff; }
         .btn-navy { width: 100%; padding: 12px; background: #1e3a8a; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; margin-top: 4px; }
         .btn-green { width: 100%; padding: 12px; background: #059669; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; }
+        .btn-whatsapp { width: 100%; padding: 12px; background: #25D366; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; }
         .btn-amber { width: 100%; padding: 12px; background: #d97706; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; margin-top: 8px; }
 
         .status-msg { text-align: center; font-size: 12px; font-weight: bold; margin-top: 8px; }
@@ -125,13 +126,13 @@
     <div class="section-card" style="border-left: 5px solid #059669;">
         <div class="section-title">📤 Stock Out & Invoicing (ዕቃ ወጪ እና ደረሰኝ)</div>
         <input type="text" id="so-customer" placeholder="Customer Name (የደንበኛ ስም)">
-        <input type="text" id="so-contact" placeholder="Customer Phone / Email">
+        <input type="text" id="so-contact" placeholder="Customer Phone (የስልክ ቁጥር e.g. 0911223344)">
         <select id="so-material"><option value="">-- Select Material --</option></select>
         <div class="grid-2">
             <input type="number" id="so-qty" placeholder="Quantity Out">
             <input type="text" id="so-inv" placeholder="Invoice No. (e.g. INV-1001)">
         </div>
-        <button class="btn-green" onclick="processSalesOrder()">🧾 Generate Invoice & Deduct Stock</button>
+        <button class="btn-green" onclick="processSalesOrder()">🧾 Generate Invoice & Send Receipt</button>
         <div id="so-msg" class="status-msg"></div>
     </div>
 
@@ -205,6 +206,7 @@
             <div class="receipt-row"><span>Invoice No:</span> <b id="r-inv">-</b></div>
             <div class="receipt-row"><span>Date:</span> <span id="r-date">-</span></div>
             <div class="receipt-row"><span>Customer:</span> <b id="r-cust">-</b></div>
+            <div class="receipt-row"><span>Phone:</span> <span id="r-phone">-</span></div>
             <hr style="border: 0.5px dashed #cbd5e1; margin: 10px 0;">
             <div class="receipt-row"><span>Item:</span> <span id="r-item">-</span></div>
             <div class="receipt-row"><span>Quantity:</span> <span id="r-qty">-</span></div>
@@ -212,8 +214,8 @@
             <hr style="border: 0.5px dashed #cbd5e1; margin: 10px 0;">
             <div class="receipt-row" style="font-size: 15px;"><span>TOTAL AMOUNT:</span> <b id="r-total" style="color: #059669;">-</b></div>
             
-            <div style="margin-top: 15px; display: flex; gap: 8px;">
-                <button class="btn-navy" onclick="window.print()">🖨️ Print Receipt</button>
+            <div style="margin-top: 15px; display: flex; flex-direction: column; gap: 8px;">
+                <button class="btn-whatsapp" onclick="sendWhatsAppReceipt()">📲 Send via WhatsApp</button>
                 <button class="btn-amber" onclick="closeReceiptModal()">Close Window</button>
             </div>
         </div>
@@ -228,6 +230,7 @@
         let localWarehouses = JSON.parse(localStorage.getItem('warehouses_store') || '[]');
         let localSuppliers = JSON.parse(localStorage.getItem('suppliers_store') || '[]');
         let localTransactions = JSON.parse(localStorage.getItem('transactions_store') || '[]');
+        let activeReceiptData = null;
 
         function initEmailJS() {
             const passkey = localStorage.getItem('cfg_passkey') || '8JupT1wuqer_SMq3p';
@@ -424,14 +427,27 @@
                 triggerLowStockAlert({ material_name: product.name, current_stock: product.quantity, unit: product.unit || 'Pcs', minimum_stock: product.min_stock || 0, type: 'OUT', quantity: qty, reference: inv }, msgBox);
             }
 
+            // Store Active Receipt Data
+            activeReceiptData = {
+                inv: inv,
+                date: new Date().toLocaleDateString(),
+                customer: customer,
+                phone: contact,
+                item: product.name,
+                qty: `${qty} ${product.unit || ''}`,
+                unit_price: `ETB ${parseFloat(product.unit_price || 0).toFixed(2)}`,
+                total: `ETB ${totalAmount.toFixed(2)}`
+            };
+
             // Display Receipt Modal
-            document.getElementById('r-inv').innerText = inv;
-            document.getElementById('r-date').innerText = new Date().toLocaleDateString();
-            document.getElementById('r-cust').innerText = `${customer} (${contact || 'N/A'})`;
-            document.getElementById('r-item').innerText = product.name;
-            document.getElementById('r-qty').innerText = `${qty} ${product.unit || ''}`;
-            document.getElementById('r-price').innerText = `ETB ${parseFloat(product.unit_price || 0).toFixed(2)}`;
-            document.getElementById('r-total').innerText = `ETB ${totalAmount.toFixed(2)}`;
+            document.getElementById('r-inv').innerText = activeReceiptData.inv;
+            document.getElementById('r-date').innerText = activeReceiptData.date;
+            document.getElementById('r-cust').innerText = activeReceiptData.customer;
+            document.getElementById('r-phone').innerText = activeReceiptData.phone || 'N/A';
+            document.getElementById('r-item').innerText = activeReceiptData.item;
+            document.getElementById('r-qty').innerText = activeReceiptData.qty;
+            document.getElementById('r-price').innerText = activeReceiptData.unit_price;
+            document.getElementById('r-total').innerText = activeReceiptData.total;
 
             document.getElementById('receipt-modal').style.display = 'flex';
 
@@ -439,6 +455,42 @@
             document.getElementById('so-contact').value = '';
             document.getElementById('so-qty').value = '';
             document.getElementById('so-inv').value = '';
+        }
+
+        function sendWhatsAppReceipt() {
+            if (!activeReceiptData) return;
+
+            let phone = activeReceiptData.phone.replace(/[^0-9]/g, ''); // Clean non-numeric characters
+            
+            // Convert Ethiopian phone format (09... or 07...) to international (+251...)
+            if (phone.startsWith('09') || phone.startsWith('07')) {
+                phone = '251' + phone.substring(1);
+            } else if (phone.startsWith('9') || phone.startsWith('7')) {
+                phone = '251' + phone;
+            }
+
+            const message = `🧾 *OFFICIAL INVOICE / RECEIPT*\n` +
+                `*Storeman Management System*\n` +
+                `-----------------------------------\n` +
+                `*Invoice No:* ${activeReceiptData.inv}\n` +
+                `*Date:* ${activeReceiptData.date}\n` +
+                `*Customer:* ${activeReceiptData.customer}\n` +
+                `-----------------------------------\n` +
+                `*Item:* ${activeReceiptData.item}\n` +
+                `*Quantity:* ${activeReceiptData.qty}\n` +
+                `*Unit Price:* ${activeReceiptData.unit_price}\n` +
+                `-----------------------------------\n` +
+                `*TOTAL AMOUNT:* ${activeReceiptData.total}\n\n` +
+                `ለገዙን እናመሰግናለን! / Thank you for your business!`;
+
+            const encodedMessage = encodeURIComponent(message);
+            
+            let whatsappUrl = `https://wa.me/${phone}?text=${encodedMessage}`;
+            if (!phone) {
+                whatsappUrl = `https://wa.me/?text=${encodedMessage}`; // If no phone, just share to WhatsApp
+            }
+
+            window.open(whatsappUrl, '_blank');
         }
 
         function closeReceiptModal() { document.getElementById('receipt-modal').style.display = 'none'; }
