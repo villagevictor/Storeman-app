@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced Storeman ERP</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background: #f1f5f9; margin: 0; padding: 12px; color: #1e293b; }
@@ -34,11 +33,14 @@
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
         th { text-align: left; padding: 8px; color: #64748b; border-bottom: 2px solid #f1f5f9; background: #f8fafc; }
         td { padding: 8px; border-bottom: 1px solid #f1f5f9; }
-        .badge-ok { color: #16a34a; font-weight: bold; }
-        .badge-low { color: #dc2626; font-weight: bold; }
         .btn-delete { background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; }
-        
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+        /* Modal / Receipt Box Styling */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; width: 90%; max-width: 400px; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .receipt-header { text-align: center; border-bottom: 2px dashed #cbd5e1; padding-bottom: 10px; margin-bottom: 10px; }
+        .receipt-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
     </style>
 </head>
 <body>
@@ -47,7 +49,7 @@
     <div class="navbar">
         <div class="navbar-title">
             <h2>📦 Storeman ERP</h2>
-            <p>Advanced Inventory, Suppliers & Sales</p>
+            <p>Stock In, Stock Out & Invoicing System</p>
         </div>
     </div>
 
@@ -59,84 +61,111 @@
         <div class="card"><div class="card-title">Warehouses</div><div class="card-value" id="total-warehouses">0</div></div>
     </div>
 
-    <!-- 1. Warehouse & Supplier Management -->
+    <!-- Setup Warehouses & Suppliers -->
     <div class="section-card">
         <div class="section-title">🏭 Warehouses & Suppliers Setup</div>
         <div class="grid-2">
             <div>
-                <b style="font-size: 12px;">Add Warehouse:</b>
-                <input type="text" id="wh-name" placeholder="Warehouse Name (e.g. Main Hub)">
-                <input type="text" id="wh-loc" placeholder="Location (e.g. Kaliti)">
-                <button class="btn-navy" onclick="addWarehouse()">Add Warehouse</button>
+                <b style="font-size: 11px;">Add Warehouse:</b>
+                <input type="text" id="wh-name" placeholder="Warehouse Name">
+                <input type="text" id="wh-loc" placeholder="Location">
+                <button class="btn-navy" onclick="addWarehouse()">Save Warehouse</button>
             </div>
             <div>
-                <b style="font-size: 12px;">Add Supplier:</b>
+                <b style="font-size: 11px;">Add Supplier:</b>
                 <input type="text" id="sup-name" placeholder="Supplier Name">
                 <input type="text" id="sup-phone" placeholder="Phone Number">
-                <button class="btn-navy" onclick="addSupplier()">Add Supplier</button>
+                <button class="btn-navy" onclick="addSupplier()">Save Supplier</button>
             </div>
         </div>
     </div>
 
-    <!-- 2. Add Material / Item with Barcode & Warehouse -->
+    <!-- Register Product -->
     <div class="section-card">
-        <div class="section-title">➕ Register Material (Inventory)</div>
+        <div class="section-title">➕ Master Product Registration</div>
         <input type="text" id="m-barcode" placeholder="Barcode / SKU (Scan or Type)">
-        <input type="text" id="m-name" placeholder="Material Name">
+        <input type="text" id="m-name" placeholder="Material / Product Name">
         <div class="grid-2">
-            <input type="text" id="m-unit" placeholder="Unit (Pcs, Qtl, Roll)">
-            <input type="number" id="m-stock" placeholder="Initial Stock Qty">
-        </div>
-        <div class="grid-2">
-            <input type="number" id="m-price" step="0.01" placeholder="Unit Price (ETB)">
-            <input type="number" id="m-min" placeholder="Min Stock Threshold">
-        </div>
-        <div class="grid-2">
-            <select id="m-warehouse"><option value="">-- Select Warehouse --</option></select>
-            <select id="m-supplier"><option value="">-- Select Supplier --</option></select>
+            <input type="text" id="m-unit" placeholder="Unit (Pcs, Qtl, Kg)">
+            <input type="number" id="m-price" step="0.01" placeholder="Selling Price (ETB)">
         </div>
         <button class="btn-navy" onclick="addMaterial()">Save Product</button>
-        <div id="add-material-msg" class="status-msg"></div>
     </div>
 
-    <!-- 3. Sales Order & Invoicing -->
-    <div class="section-card">
-        <div class="section-title">🧾 Sales Order & Invoicing</div>
-        <input type="text" id="so-customer" placeholder="Customer Name">
-        <select id="so-material"><option value="">-- Select Item to Sell --</option></select>
+    <!-- Stock In (ዕቃ ገቢ) -->
+    <div class="section-card" style="border-left: 5px solid #1e3a8a;">
+        <div class="section-title">📥 Stock In (ዕቃ ገቢ መመዝገቢያ)</div>
+        <select id="stockin-material"><option value="">-- Select Product --</option></select>
         <div class="grid-2">
-            <input type="number" id="so-qty" placeholder="Quantity">
-            <input type="text" id="so-inv" placeholder="Invoice No. (e.g. INV-1001)">
+            <input type="number" id="stockin-qty" placeholder="Quantity In">
+            <select id="stockin-supplier"><option value="">-- Select Supplier --</option></select>
         </div>
-        <button class="btn-green" onclick="processSalesOrder()">Generate Sales Order & Deduct Stock</button>
+        <button class="btn-navy" onclick="processStockIn()">➕ Receive Stock (መጋዘን አስገባ)</button>
+        <div id="stockin-msg" class="status-msg"></div>
+    </div>
+
+    <!-- Stock Out & Invoicing (ዕቃ ወጪ እና ደረሰኝ) -->
+    <div class="section-card" style="border-left: 5px solid #059669;">
+        <div class="section-title">📤 Stock Out & Invoicing (ዕቃ ወጪ እና ደረሰኝ)</div>
+        <input type="text" id="so-customer" placeholder="Customer Name (የደንበኛ ስም)">
+        <input type="text" id="so-contact" placeholder="Customer Phone or Email (ስልክ/ኢሜይል)">
+        <select id="so-material"><option value="">-- Select Product --</option></select>
+        <div class="grid-2">
+            <input type="number" id="so-qty" placeholder="Quantity Out">
+            <input type="text" id="so-inv" placeholder="Invoice No. (ex: INV-1001)">
+        </div>
+        <button class="btn-green" onclick="processSalesOrder()">🧾 Generate Invoice & Deduct Stock</button>
         <div id="so-msg" class="status-msg"></div>
     </div>
 
-    <!-- 4. Database Cloud Backup & Restore -->
-    <div class="section-card">
-        <div class="section-title">☁️ Cloud Backup & Sync</div>
-        <input type="email" id="backup-user-email" value="ashenafihailay645@gmail.com" placeholder="Account Email">
-        <button class="btn-navy" onclick="cloudBackupData()">☁️ Backup All ERP Data to Supabase</button>
-        <button class="btn-amber" onclick="cloudRestoreData()">🔄 Restore ERP Data from Supabase</button>
-        <div id="cloud-backup-msg" class="status-msg"></div>
-    </div>
-
-    <!-- Current Stock Inventory Table -->
+    <!-- Inventory Table -->
     <div class="section-card" style="overflow-x:auto;">
-        <div class="section-title">📦 Current Inventory</div>
+        <div class="section-title">📦 Current Inventory Stock</div>
         <table>
             <thead>
                 <tr>
                     <th>Barcode</th>
-                    <th>Material</th>
-                    <th>Stock</th>
-                    <th>Warehouse</th>
-                    <th>Unit Price</th>
+                    <th>Product Name</th>
+                    <th>Stock Qty</th>
+                    <th>Price</th>
                     <th>Action</th>
                 </tr>
             </thead>
             <tbody id="inventory-list"></tbody>
         </table>
+    </div>
+
+    <!-- Cloud Sync -->
+    <div class="section-card">
+        <div class="section-title">☁️ Cloud Sync (Supabase)</div>
+        <input type="email" id="backup-user-email" value="ashenafihailay645@gmail.com">
+        <button class="btn-navy" onclick="cloudBackupData()">☁️ Backup All ERP Data</button>
+        <button class="btn-amber" onclick="cloudRestoreData()">🔄 Restore ERP Data</button>
+        <div id="cloud-backup-msg" class="status-msg"></div>
+    </div>
+
+    <!-- RECEIPT MODAL (የደረሰኝ ማሳያ እና ማተሚያ) -->
+    <div id="receipt-modal" class="modal">
+        <div class="modal-content">
+            <div class="receipt-header">
+                <h3 style="margin: 0; color: #0f2b48;">OFFICIAL INVOICE / RECEIPT</h3>
+                <p style="margin: 4px 0 0 0; font-size: 11px; color: #64748b;">Storeman Management System</p>
+            </div>
+            <div class="receipt-row"><span>Invoice No:</span> <b id="r-inv">-</b></div>
+            <div class="receipt-row"><span>Date:</span> <span id="r-date">-</span></div>
+            <div class="receipt-row"><span>Customer:</span> <b id="r-cust">-</b></div>
+            <hr style="border: 0.5px dashed #cbd5e1; margin: 10px 0;">
+            <div class="receipt-row"><span>Item:</span> <span id="r-item">-</span></div>
+            <div class="receipt-row"><span>Quantity:</span> <span id="r-qty">-</span></div>
+            <div class="receipt-row"><span>Unit Price:</span> <span id="r-price">-</span></div>
+            <hr style="border: 0.5px dashed #cbd5e1; margin: 10px 0;">
+            <div class="receipt-row" style="font-size: 15px;"><span>TOTAL AMOUNT:</span> <b id="r-total" style="color: #059669;">-</b></div>
+            
+            <div style="margin-top: 15px; display: flex; gap: 8px;">
+                <button class="btn-navy" onclick="window.print()">🖨️ Print Receipt</button>
+                <button class="btn-amber" onclick="closeReceiptModal()">Close Window</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -147,20 +176,15 @@
         let localProducts = JSON.parse(localStorage.getItem('erp_products') || '[]');
         let localWarehouses = JSON.parse(localStorage.getItem('erp_warehouses') || '[]');
         let localSuppliers = JSON.parse(localStorage.getItem('erp_suppliers') || '[]');
-        let localSales = JSON.parse(localStorage.getItem('erp_sales') || '[]');
+        let localTransactions = JSON.parse(localStorage.getItem('erp_transactions') || '[]');
 
         function renderUI() {
             let totalStock = 0;
             let inventoryHTML = '';
-            let productOptions = '<option value="">-- Select Item --</option>';
-            let whOptions = '<option value="">-- Select Warehouse --</option>';
+            let productOptions = '<option value="">-- Select Product --</option>';
             let supOptions = '<option value="">-- Select Supplier --</option>';
 
-            localWarehouses.forEach(w => { whOptions += `<option value="${w.name}">${w.name}</option>`; });
             localSuppliers.forEach(s => { supOptions += `<option value="${s.name}">${s.name}</option>`; });
-
-            document.getElementById('m-warehouse').innerHTML = whOptions;
-            document.getElementById('m-supplier').innerHTML = supOptions;
 
             localProducts.forEach((item, index) => {
                 const qty = parseInt(item.quantity) || 0;
@@ -172,7 +196,6 @@
                         <td><code>${item.barcode || '-'}</code></td>
                         <td><b>${item.name}</b></td>
                         <td><b>${qty}</b> ${item.unit || ''}</td>
-                        <td>${item.warehouse || 'Main'}</td>
                         <td>ETB ${parseFloat(item.unit_price || 0).toFixed(2)}</td>
                         <td><button class="btn-delete" onclick="deleteProduct(${index})">Del</button></td>
                     </tr>`;
@@ -183,92 +206,110 @@
             document.getElementById('total-suppliers').innerText = localSuppliers.length;
             document.getElementById('total-warehouses').innerText = localWarehouses.length;
 
-            document.getElementById('inventory-list').innerHTML = inventoryHTML || '<tr><td colspan="6">No inventory data.</td></tr>';
+            document.getElementById('inventory-list').innerHTML = inventoryHTML || '<tr><td colspan="5">No products found.</td></tr>';
             document.getElementById('so-material').innerHTML = productOptions;
+            document.getElementById('stockin-material').innerHTML = productOptions;
+            document.getElementById('stockin-supplier').innerHTML = supOptions;
         }
 
         async function addWarehouse() {
             const name = document.getElementById('wh-name').value.trim();
             const location = document.getElementById('wh-loc').value.trim();
             if(!name) return alert("Warehouse name required!");
-
             localWarehouses.push({ name, location });
             localStorage.setItem('erp_warehouses', JSON.stringify(localWarehouses));
-            try { await supabaseClient.from('warehouses').insert([{ name, location }]); } catch(e){}
-            document.getElementById('wh-name').value = '';
-            document.getElementById('wh-loc').value = '';
-            renderUI();
-            alert("✅ Warehouse Added!");
+            renderUI(); alert("✅ Warehouse Saved!");
         }
 
         async function addSupplier() {
             const name = document.getElementById('sup-name').value.trim();
             const phone = document.getElementById('sup-phone').value.trim();
             if(!name) return alert("Supplier name required!");
-
             localSuppliers.push({ name, phone });
             localStorage.setItem('erp_suppliers', JSON.stringify(localSuppliers));
-            try { await supabaseClient.from('suppliers').insert([{ name, phone }]); } catch(e){}
-            document.getElementById('sup-name').value = '';
-            document.getElementById('sup-phone').value = '';
-            renderUI();
-            alert("✅ Supplier Added!");
+            renderUI(); alert("✅ Supplier Saved!");
         }
 
         function addMaterial() {
             const barcode = document.getElementById('m-barcode').value.trim();
             const name = document.getElementById('m-name').value.trim();
             const unit = document.getElementById('m-unit').value.trim() || 'Pcs';
-            const quantity = parseInt(document.getElementById('m-stock').value) || 0;
             const unit_price = parseFloat(document.getElementById('m-price').value) || 0;
-            const warehouse = document.getElementById('m-warehouse').value;
-            const supplier = document.getElementById('m-supplier').value;
 
-            if(!name) return alert("Material Name required!");
+            if(!name) return alert("Product Name required!");
 
-            localProducts.push({ barcode, name, unit, quantity, unit_price, warehouse, supplier });
+            localProducts.push({ barcode, name, unit, quantity: 0, unit_price });
             localStorage.setItem('erp_products', JSON.stringify(localProducts));
-
             document.getElementById('m-barcode').value = '';
             document.getElementById('m-name').value = '';
-            document.getElementById('m-stock').value = '';
             document.getElementById('m-price').value = '';
-            
-            renderUI();
-            document.getElementById('add-material-msg').className = 'status-msg msg-success';
-            document.getElementById('add-material-msg').innerText = "✅ Product Registered Successfully!";
+            renderUI(); alert("✅ Product Registered!");
         }
 
+        /* Stock In Function */
+        function processStockIn() {
+            const idx = document.getElementById('stockin-material').value;
+            const qty = parseInt(document.getElementById('stockin-qty').value);
+            const supplier = document.getElementById('stockin-supplier').value;
+
+            if(idx === "" || !qty || qty <= 0) return alert("Please select product and valid quantity!");
+
+            localProducts[idx].quantity += qty;
+            localTransactions.push({ type: 'STOCK_IN', product: localProducts[idx].name, qty, supplier, date: new Date().toISOString() });
+
+            localStorage.setItem('erp_products', JSON.stringify(localProducts));
+            localStorage.setItem('erp_transactions', JSON.stringify(localTransactions));
+
+            document.getElementById('stockin-qty').value = '';
+            renderUI();
+            document.getElementById('stockin-msg').className = 'status-msg msg-success';
+            document.getElementById('stockin-msg').innerText = "✅ Stock In Successfully Logged!";
+        }
+
+        /* Stock Out & Invoicing Function */
         async function processSalesOrder() {
             const customer = document.getElementById('so-customer').value.trim();
+            const contact = document.getElementById('so-contact').value.trim();
             const idx = document.getElementById('so-material').value;
             const qty = parseInt(document.getElementById('so-qty').value);
-            const inv = document.getElementById('so-inv').value.trim();
-            const msgBox = document.getElementById('so-msg');
+            const inv = document.getElementById('so-inv').value.trim() || 'INV-' + Math.floor(1000 + Math.random() * 9000);
 
-            if(idx === "" || !qty || qty <= 0) return alert("Valid product and quantity required!");
+            if(idx === "" || !qty || qty <= 0 || !customer) return alert("Customer Name, Product and Quantity required!");
 
             let prod = localProducts[idx];
-            if(prod.quantity < qty) return alert("Not enough stock available!");
+            if(prod.quantity < qty) return alert("Insufficient Stock Available!");
 
             prod.quantity -= qty;
             const totalAmount = qty * prod.unit_price;
 
-            localSales.push({ customer, product: prod.name, qty, totalAmount, inv, date: new Date().toISOString() });
+            localTransactions.push({ type: 'STOCK_OUT', customer, contact, product: prod.name, qty, totalAmount, inv, date: new Date().toISOString() });
             localStorage.setItem('erp_products', JSON.stringify(localProducts));
-            localStorage.setItem('erp_sales', JSON.stringify(localSales));
+            localStorage.setItem('erp_transactions', JSON.stringify(localTransactions));
 
             try {
                 await supabaseClient.from('sales_orders').insert([{ customer_name: customer, total_amount: totalAmount, invoice_number: inv }]);
             } catch(e){}
 
+            // Display Receipt
+            document.getElementById('r-inv').innerText = inv;
+            document.getElementById('r-date').innerText = new Date().toLocaleDateString();
+            document.getElementById('r-cust').innerText = `${customer} (${contact || 'N/A'})`;
+            document.getElementById('r-item').innerText = prod.name;
+            document.getElementById('r-qty').innerText = `${qty} ${prod.unit || ''}`;
+            document.getElementById('r-price').innerText = `ETB ${prod.unit_price.toFixed(2)}`;
+            document.getElementById('r-total').innerText = `ETB ${totalAmount.toFixed(2)}`;
+
+            document.getElementById('receipt-modal').style.display = 'flex';
+
             document.getElementById('so-customer').value = '';
+            document.getElementById('so-contact').value = '';
             document.getElementById('so-qty').value = '';
             document.getElementById('so-inv').value = '';
-
             renderUI();
-            msgBox.className = 'status-msg msg-success';
-            msgBox.innerText = `✅ Sales Order ${inv || ''} Processed & Stock Updated!`;
+        }
+
+        function closeReceiptModal() {
+            document.getElementById('receipt-modal').style.display = 'none';
         }
 
         function deleteProduct(index) {
@@ -282,28 +323,16 @@
         async function cloudBackupData() {
             const email = document.getElementById('backup-user-email').value.trim().toLowerCase();
             const msgBox = document.getElementById('cloud-backup-msg');
-            msgBox.className = "status-msg"; msgBox.innerText = "⏳ Syncing All ERP Data to Cloud...";
+            msgBox.className = "status-msg"; msgBox.innerText = "⏳ Syncing Data to Cloud...";
 
-            const fullData = {
-                products: localProducts,
-                warehouses: localWarehouses,
-                suppliers: localSuppliers,
-                sales: localSales
-            };
+            const fullData = { products: localProducts, warehouses: localWarehouses, suppliers: localSuppliers, transactions: localTransactions };
 
             try {
-                const { error } = await supabaseClient.from('store_backups').upsert({
-                    email: email,
-                    materials_data: JSON.stringify(fullData),
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'email' });
-
+                const { error } = await supabaseClient.from('store_backups').upsert({ email, materials_data: JSON.stringify(fullData), updated_at: new Date().toISOString() }, { onConflict: 'email' });
                 if(error) throw error;
-                msgBox.className = "status-msg msg-success";
-                msgBox.innerText = "☁️ Full ERP Backup Saved to Cloud Database!";
+                msgBox.className = "status-msg msg-success"; msgBox.innerText = "☁️ Backup Saved to Cloud Database!";
             } catch(e) {
-                msgBox.className = "status-msg msg-error";
-                msgBox.innerText = "❌ Cloud Sync Failed! Check connection.";
+                msgBox.className = "status-msg msg-error"; msgBox.innerText = "❌ Sync Failed! Check connection.";
             }
         }
 
@@ -315,24 +344,20 @@
             try {
                 const { data, error } = await supabaseClient.from('store_backups').select('*').eq('email', email).single();
                 if(error || !data) throw new Error("No backup found");
-
                 const restored = JSON.parse(data.materials_data);
                 if(restored.products) localProducts = restored.products;
                 if(restored.warehouses) localWarehouses = restored.warehouses;
                 if(restored.suppliers) localSuppliers = restored.suppliers;
-                if(restored.sales) localSales = restored.sales;
+                if(restored.transactions) localTransactions = restored.transactions;
 
                 localStorage.setItem('erp_products', JSON.stringify(localProducts));
                 localStorage.setItem('erp_warehouses', JSON.stringify(localWarehouses));
                 localStorage.setItem('erp_suppliers', JSON.stringify(localSuppliers));
-                localStorage.setItem('erp_sales', JSON.stringify(localSales));
-
+                localStorage.setItem('erp_transactions', JSON.stringify(localTransactions));
                 renderUI();
-                msgBox.className = "status-msg msg-success";
-                msgBox.innerText = "✅ ERP Data Restored Successfully!";
+                msgBox.className = "status-msg msg-success"; msgBox.innerText = "✅ Data Restored Successfully!";
             } catch(e) {
-                msgBox.className = "status-msg msg-error";
-                msgBox.innerText = "❌ Failed to restore data!";
+                msgBox.className = "status-msg msg-error"; msgBox.innerText = "❌ Failed to restore data!";
             }
         }
 
