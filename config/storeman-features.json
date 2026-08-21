@@ -1,0 +1,31 @@
+{
+  "application": "Storeman Inventory ERP",
+  "version": "2.0.0",
+  "platforms": {
+    "android": true,
+    "web": true,
+    "ios_pwa": true,
+    "pc_web": true
+  },
+  "modules": {
+    "dashboard": true,
+    "products": true,
+    "warehouses": true,
+    "suppliers": true,
+    "stock_in": true,
+    "stock_out": true,
+    "customers": true,
+    "invoicing": true,
+    "whatsapp_invoice": true,
+    "low_stock_alert": true,
+    "daily_report": true,
+    "cloud_backup": true,
+    "cloud_restore": true
+  },
+  "data_safety": {
+    "local_storage": true,
+    "cloud_backup": true,
+    "cloud_restore": true,
+    "transaction_history": true
+  }
+}
