@@ -1,0 +1,11 @@
+{
+  "name": "Storeman Inventory",
+  "short_name": "Storeman",
+  "description": "Storeman Inventory and ERP Management System",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f2b48",
+  "orientation": "portrait",
+  "icons": []
+}
