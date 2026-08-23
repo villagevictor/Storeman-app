@@ -1,0 +1,345 @@
+
+/*
+ STOREMAN AUTHENTICATION
+ Does NOT delete or replace existing inventory code.
+*/
+
+(function () {
+
+    let sb = null;
+
+    function getSupabase() {
+        if (window.supabase && typeof window.supabase.createClient === "function") {
+
+            const url =
+                "https://cfnrbgfczqfpmdjzzbia.supabase.co";
+
+            const key =
+                "sb_publishable_AN3kSG6xIx38ThIMg4o28w_u6kPIrn2";
+
+            if (!sb) {
+                sb = window.supabase.createClient(url, key);
+            }
+
+            return sb;
+        }
+
+        return null;
+    }
+
+    function authScreen() {
+
+        if (document.getElementById("storeman-auth-screen"))
+            return;
+
+        const div = document.createElement("div");
+
+        div.id = "storeman-auth-screen";
+
+        div.innerHTML = `
+        <div style="
+            position:fixed;
+            inset:0;
+            z-index:999999;
+            background:#101418;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:20px;
+            font-family:Arial,sans-serif;
+        ">
+
+            <div style="
+                width:100%;
+                max-width:420px;
+                background:#ffffff;
+                border-radius:18px;
+                padding:28px;
+                box-shadow:0 20px 60px rgba(0,0,0,.4);
+            ">
+
+                <h2 style="margin-top:0">
+                    Storeman
+                </h2>
+
+                <p style="color:#666">
+                    Login to continue
+                </p>
+
+                <input
+                    id="storeman-email"
+                    type="email"
+                    placeholder="Email"
+                    style="
+                    width:100%;
+                    box-sizing:border-box;
+                    padding:13px;
+                    margin:7px 0;
+                    border:1px solid #ccc;
+                    border-radius:9px;
+                    "
+                >
+
+                <input
+                    id="storeman-password"
+                    type="password"
+                    placeholder="Password"
+                    style="
+                    width:100%;
+                    box-sizing:border-box;
+                    padding:13px;
+                    margin:7px 0;
+                    border:1px solid #ccc;
+                    border-radius:9px;
+                    "
+                >
+
+                <button
+                    id="storeman-login"
+                    style="
+                    width:100%;
+                    padding:14px;
+                    margin-top:10px;
+                    border:0;
+                    border-radius:9px;
+                    background:#16803c;
+                    color:white;
+                    font-weight:bold;
+                    "
+                >
+                    Login
+                </button>
+
+                <button
+                    id="storeman-reset"
+                    style="
+                    width:100%;
+                    padding:12px;
+                    margin-top:8px;
+                    border:0;
+                    background:transparent;
+                    color:#16803c;
+                    "
+                >
+                    Forgot password?
+                </button>
+
+                <div
+                    id="storeman-auth-message"
+                    style="
+                    margin-top:12px;
+                    font-size:14px;
+                    "
+                ></div>
+
+            </div>
+        </div>
+        `;
+
+        document.body.appendChild(div);
+
+        document.getElementById("storeman-login")
+            .onclick = async function () {
+
+                const client = getSupabase();
+
+                if (!client) {
+                    showMessage("Supabase library is not loaded.");
+                    return;
+                }
+
+                const email =
+                    document.getElementById("storeman-email").value.trim();
+
+                const password =
+                    document.getElementById("storeman-password").value;
+
+                if (!email || !password) {
+                    showMessage("Email and password are required.");
+                    return;
+                }
+
+                showMessage("Logging in...");
+
+                const result =
+                    await client.auth.signInWithPassword({
+                        email,
+                        password
+                    });
+
+                if (result.error) {
+                    showMessage(result.error.message);
+                    return;
+                }
+
+                await loadProfile(client);
+
+            };
+
+        document.getElementById("storeman-reset")
+            .onclick = async function () {
+
+                const client = getSupabase();
+
+                const email =
+                    document.getElementById("storeman-email").value.trim();
+
+                if (!email) {
+                    showMessage("Enter your email first.");
+                    return;
+                }
+
+                const result =
+                    await client.auth.resetPasswordForEmail(email);
+
+                if (result.error)
+                    showMessage(result.error.message);
+                else
+                    showMessage("Password reset email sent.");
+
+            };
+    }
+
+    function showMessage(message) {
+
+        const el =
+            document.getElementById("storeman-auth-message");
+
+        if (el)
+            el.textContent = message;
+    }
+
+    async function loadProfile(client) {
+
+        const {
+            data: {
+                user
+            }
+        } = await client.auth.getUser();
+
+        if (!user) {
+            showMessage("Login failed.");
+            return;
+        }
+
+        const result =
+            await client
+                .from("profiles")
+                .select("*")
+                .eq("id", user.id)
+                .single();
+
+        if (result.error) {
+            showMessage(
+                "Login successful, but user profile is not configured."
+            );
+            return;
+        }
+
+        const profile = result.data;
+
+        if (profile.status !== "active") {
+
+            await client.auth.signOut();
+
+            showMessage(
+                "Your account is disabled. Contact the administrator."
+            );
+
+            return;
+        }
+
+        sessionStorage.setItem(
+            "storeman_role",
+            profile.role || "user"
+        );
+
+        sessionStorage.setItem(
+            "storeman_company_id",
+            profile.company_id || ""
+        );
+
+        sessionStorage.setItem(
+            "storeman_user_id",
+            user.id
+        );
+
+        await client
+            .from("profiles")
+            .update({
+                last_seen_at: new Date().toISOString()
+            })
+            .eq("id", user.id);
+
+        const screen =
+            document.getElementById("storeman-auth-screen");
+
+        if (screen)
+            screen.remove();
+
+        document.dispatchEvent(
+            new CustomEvent("storeman-auth-ready", {
+                detail: profile
+            })
+        );
+    }
+
+    async function startAuth() {
+
+        const client = getSupabase();
+
+        if (!client) {
+
+            setTimeout(startAuth, 500);
+
+            return;
+        }
+
+        const {
+            data: {
+                session
+            }
+        } = await client.auth.getSession();
+
+        if (!session) {
+
+            authScreen();
+
+            return;
+        }
+
+        await loadProfile(client);
+    }
+
+    window.StoremanAuth = {
+        getClient: getSupabase,
+
+        getRole: function () {
+            return sessionStorage.getItem("storeman_role");
+        },
+
+        getCompanyId: function () {
+            return sessionStorage.getItem("storeman_company_id");
+        },
+
+        isAdmin: function () {
+            return sessionStorage.getItem("storeman_role") === "admin";
+        },
+
+        logout: async function () {
+
+            const client = getSupabase();
+
+            if (client)
+                await client.auth.signOut();
+
+            sessionStorage.clear();
+
+            location.reload();
+        }
+    };
+
+    window.addEventListener("load", startAuth);
+
+})();
+
