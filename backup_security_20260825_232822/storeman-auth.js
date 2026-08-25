@@ -181,14 +181,6 @@
                         📧 Forgot Password?
                     </button>
 
-                    <button
-                        type="button"
-                        id="storeman-signup"
-                        class="secondary"
-                    >
-                        👤 Create Account
-                    </button>
-
                 </form>
 
                 <div id="storeman-login-message"></div>
@@ -196,85 +188,6 @@
             </div>
 
         </div>
-
-
-        <!-- =====================================================
-             USER SIGNUP
-        ====================================================== -->
-
-        <div
-            id="storeman-signup-page"
-            style="display:none"
-        >
-
-            <div class="storeman-login-card">
-
-                <div class="storeman-logo">
-                    👤
-                </div>
-
-                <h1>Create Account</h1>
-
-                <p class="storeman-subtitle">
-                    Your account will require Admin approval.
-                </p>
-
-                <form id="storeman-signup-form">
-
-                    <input
-                        id="storeman-signup-name"
-                        type="text"
-                        placeholder="Full name"
-                        autocomplete="name"
-                        required
-                    >
-
-                    <input
-                        id="storeman-signup-email"
-                        type="email"
-                        placeholder="Email"
-                        autocomplete="email"
-                        required
-                    >
-
-                    <input
-                        id="storeman-signup-password"
-                        type="password"
-                        placeholder="Password"
-                        autocomplete="new-password"
-                        minlength="8"
-                        required
-                    >
-
-                    <input
-                        id="storeman-signup-password2"
-                        type="password"
-                        placeholder="Confirm password"
-                        autocomplete="new-password"
-                        minlength="8"
-                        required
-                    >
-
-                    <button type="submit">
-                        📝 Sign Up
-                    </button>
-
-                    <button
-                        type="button"
-                        id="storeman-back-login"
-                        class="secondary"
-                    >
-                        ← Back to Login
-                    </button>
-
-                </form>
-
-                <div id="storeman-signup-message"></div>
-
-            </div>
-
-        </div>
-
 
 
         <!-- =====================================================
@@ -544,25 +457,6 @@
                 resetPassword
             );
 
-
-        $("storeman-signup")
-            .addEventListener(
-                "click",
-                showSignup
-            );
-
-        $("storeman-back-login")
-            .addEventListener(
-                "click",
-                showLogin
-            );
-
-        $("storeman-signup-form")
-            .addEventListener(
-                "submit",
-                signup
-            );
-
         $("admin-close")
             .addEventListener(
                 "click",
@@ -607,33 +501,6 @@
             "storeman-auth-style";
 
         style.textContent = `
-
-        #storeman-signup-page {
-
-            position:fixed;
-            inset:0;
-            z-index:999998;
-
-            background:#f3f6f9;
-
-            display:flex;
-            justify-content:center;
-            align-items:center;
-
-            padding:20px;
-
-            font-family:Arial,sans-serif;
-        }
-
-
-        #storeman-signup-message {
-
-            margin-top:15px;
-
-            font-size:14px;
-        }
-
-
 
         #storeman-login-page {
 
@@ -1322,158 +1189,9 @@
         const page =
             $("storeman-login-page");
 
-        const signupPage =
-            $("storeman-signup-page");
-
         if (page)
             page.style.display =
                 "flex";
-
-        if (signupPage)
-            signupPage.style.display =
-                "none";
-    }
-
-
-    function showSignup() {
-
-        const page =
-            $("storeman-login-page");
-
-        const signupPage =
-            $("storeman-signup-page");
-
-        if (page)
-            page.style.display =
-                "none";
-
-        if (signupPage)
-            signupPage.style.display =
-                "flex";
-    }
-
-
-    async function signup(event) {
-
-        event.preventDefault();
-
-        const name =
-            $("storeman-signup-name")
-                .value
-                .trim();
-
-        const email =
-            $("storeman-signup-email")
-                .value
-                .trim();
-
-        const password =
-            $("storeman-signup-password")
-                .value;
-
-        const password2 =
-            $("storeman-signup-password2")
-                .value;
-
-        const message =
-            $("storeman-signup-message");
-
-        if (password !== password2) {
-
-            message.textContent =
-                "Passwords do not match.";
-
-            message.style.color =
-                "#c62828";
-
-            return;
-        }
-
-        if (password.length < 8) {
-
-            message.textContent =
-                "Password must be at least 8 characters.";
-
-            message.style.color =
-                "#c62828";
-
-            return;
-        }
-
-        message.textContent =
-            "Creating account...";
-
-        message.style.color =
-            "#16803c";
-
-        try {
-
-            const result =
-                await sb.auth.signUp({
-
-                    email,
-
-                    password,
-
-                    options: {
-
-                        data: {
-                            full_name:
-                                name
-                        },
-
-                        emailRedirectTo:
-                            window.location.origin +
-                            window.location.pathname
-
-                    }
-
-                });
-
-            if (result.error)
-                throw result.error;
-
-            /*
-             * If email confirmation is enabled,
-             * Supabase may return a user without
-             * an active session.
-             */
-
-            if (
-                result.data &&
-                result.data.session
-            ) {
-
-                /*
-                 * Immediately sign out.
-                 * The profile is pending until
-                 * Admin approves it.
-                 */
-
-                await sb.auth.signOut();
-
-            }
-
-            message.textContent =
-                "Account created. Please verify your email if required. Your account is now waiting for Admin approval.";
-
-            message.style.color =
-                "#16803c";
-
-            $("storeman-signup-form")
-                .reset();
-
-        } catch (error) {
-
-            console.error(error);
-
-            message.textContent =
-                error.message ||
-                "Account creation failed.";
-
-            message.style.color =
-                "#c62828";
-        }
     }
 
 
