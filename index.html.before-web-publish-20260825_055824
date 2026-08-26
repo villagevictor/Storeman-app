@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Storeman ERP & Inventory System</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background: #f1f5f9; margin: 0; padding: 12px; color: #1e293b; }
+        
+        .navbar { background: #0f2b48; color: white; padding: 12px 16px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .navbar-title h2 { margin: 0; font-size: 16px; font-weight: bold; }
+        .navbar-title p { margin: 2px 0 0 0; font-size: 11px; color: #94a3b8; }
+        .btn-settings { background: rgba(255, 255, 255, 0.15); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }
+        
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .card { background: white; padding: 12px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .card-title { font-size: 11px; color: #64748b; font-weight: bold; }
+        .card-value { font-size: 18px; font-weight: bold; margin-top: 5px; color: #0f2b48; }
+
+        .section-card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .section-title { font-size: 15px; font-weight: bold; color: #0f2b48; margin-bottom: 12px; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; }
+        
+        input, select { width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; outline: none; background: #fff; }
+        .btn-navy { width: 100%; padding: 12px; background: #1e3a8a; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; margin-top: 4px; }
+        .btn-green { width: 100%; padding: 12px; background: #059669; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; }
+        .btn-whatsapp { width: 100%; padding: 12px; background: #25D366; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; }
+        .btn-amber { width: 100%; padding: 12px; background: #d97706; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; margin-top: 8px; }
+
+        .status-msg { text-align: center; font-size: 12px; font-weight: bold; margin-top: 8px; }
+        .msg-sending { color: #d97706; }
+        .msg-success { color: #16a34a; }
+        .msg-error { color: #dc2626; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
+        th { text-align: left; padding: 8px; color: #64748b; border-bottom: 2px solid #f1f5f9; background: #f8fafc; }
+        td { padding: 8px; border-bottom: 1px solid #f1f5f9; }
+        .badge-ok { color: #16a34a; font-weight: bold; }
+        .badge-low { color: #dc2626; font-weight: bold; }
+        .btn-delete { background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+        /* Modal Box Styling */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; padding: 15px; }
+        .modal-content { background: white; border-radius: 12px; width: 100%; max-width: 400px; padding: 18px; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .close-btn { background: none; border: none; font-size: 20px; color: #64748b; cursor: pointer; }
+        .modal-label { font-size: 11px; font-weight: bold; color: #1e293b; margin-top: 6px; display: block; }
+        
+        /* Receipt Styling */
+        .receipt-header { text-align: center; border-bottom: 2px dashed #cbd5e1; padding-bottom: 10px; margin-bottom: 10px; }
+        .receipt-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="navbar">
+        <div class="navbar-title">
+            <h2>📦 Storeman ERP</h2>
+            <p>Complete Inventory & Sales Management</p>
+        </div>
+        <button class="btn-settings" onclick="openSettings()">⚙️ Settings</button>
+    </div>
+
+    <!-- Dashboard Stats -->
+    <div class="stats-grid">
+        <div class="card"><div class="card-title">Total Materials</div><div class="card-value" id="total-materials">0</div></div>
+        <div class="card"><div class="card-title">Total Stock Qty</div><div class="card-value" id="total-stock">0</div></div>
+        <div class="card"><div class="card-title">Total Valuation (ETB)</div><div class="card-value" id="total-valuation" style="color:#16a34a;">0.00</div></div>
+        <div class="card"><div class="card-title">Low Stock Alert</div><div class="card-value" id="low-stock" style="color:#dc2626;">0</div></div>
+    </div>
+
+    <!-- Warehouses & Suppliers Setup -->
+    <div class="section-card">
+        <div class="section-title">🏭 Warehouses & Suppliers Setup</div>
+        <div class="grid-2">
+            <div>
+                <b style="font-size: 11px;">Add Warehouse:</b>
+                <input type="text" id="wh-name" placeholder="Warehouse Name">
+                <input type="text" id="wh-loc" placeholder="Location">
+                <button class="btn-navy" onclick="addWarehouse()">Save Warehouse</button>
+            </div>
+            <div>
+                <b style="font-size: 11px;">Add Supplier:</b>
+                <input type="text" id="sup-name" placeholder="Supplier Name">
+                <input type="text" id="sup-phone" placeholder="Phone Number">
+                <button class="btn-navy" onclick="addSupplier()">Save Supplier</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Master Product Registration -->
+    <div class="section-card">
+        <div class="section-title">➕ Register Product / Material</div>
+        <input type="text" id="m-barcode" placeholder="Barcode / SKU (Optional)">
+        <input type="text" id="m-name" placeholder="Material Name (e.g. Cement)">
+        <div class="grid-2">
+            <input type="text" id="m-unit" placeholder="Unit (e.g. Bag, Pcs, Kg)">
+            <input type="number" id="m-price" step="0.01" placeholder="Unit Price in ETB">
+        </div>
+        <div class="grid-2">
+            <input type="number" id="m-stock" placeholder="Initial Stock Qty">
+            <input type="number" id="m-min" placeholder="Min Stock Threshold">
+        </div>
+        <button class="btn-navy" onclick="addMaterial()">Save Product</button>
+        <div id="add-material-msg" class="status-msg"></div>
+    </div>
+
+    <!-- Stock In (ዕቃ ገቢ) -->
+    <div class="section-card" style="border-left: 5px solid #1e3a8a;">
+        <div class="section-title">📥 Stock In (ዕቃ ገቢ መመዝገቢያ)</div>
+        <select id="stockin-material"><option value="">-- Select Material --</option></select>
+        <div class="grid-2">
+            <input type="number" id="stockin-qty" placeholder="Quantity In">
+            <select id="stockin-supplier"><option value="">-- Select Supplier --</option></select>
+        </div>
+        <input type="text" id="stockin-ref" placeholder="Reference / Receipt No.">
+        <button class="btn-navy" onclick="processStockIn()">➕ Receive Stock (መጋዘን አስገባ)</button>
+        <div id="stockin-msg" class="status-msg"></div>
+    </div>
+
+    <!-- Stock Out & Invoicing (ዕቃ ወጪ እና ደረሰኝ) -->
+    <div class="section-card" style="border-left: 5px solid #059669;">
+        <div class="section-title">📤 Stock Out & Invoicing (ዕቃ ወጪ እና ደረሰኝ)</div>
+        <input type="text" id="so-customer" placeholder="Customer Name (የደንበኛ ስም)">
+        <input type="text" id="so-contact" placeholder="Customer Phone (የስልክ ቁጥር e.g. 0911223344)">
+        <select id="so-material"><option value="">-- Select Material --</option></select>
+        <div class="grid-2">
+            <input type="number" id="so-qty" placeholder="Quantity Out">
+            <input type="text" id="so-inv" placeholder="Invoice No. (e.g. INV-1001)">
+        </div>
+        <button class="btn-green" onclick="processSalesOrder()">🧾 Save to Supabase & Send WhatsApp</button>
+        <div id="so-msg" class="status-msg"></div>
+    </div>
+
+    <!-- Daily Movement Summary Email Report -->
+    <div class="section-card">
+        <div class="section-title">📊 Daily Movement Summary Email Report</div>
+        <p style="font-size: 11px; color: #64748b; margin-top:-6px; margin-bottom:12px;">Send today's summary & inventory report to email.</p>
+        <button class="btn-green" onclick="sendDailyReport()">📩 Send Today's Daily Report</button>
+        <div id="daily-report-msg" class="status-msg"></div>
+    </div>
+
+    <!-- Cloud Backup & Restore -->
+    <div class="section-card">
+        <div class="section-title">☁️ Cloud Database Backup & Restore</div>
+        <p style="font-size: 11px; color: #64748b; margin-top:-6px; margin-bottom:12px;">Save data securely to database or restore using your account email.</p>
+        <label class="modal-label">Your Account Email:</label>
+        <input type="email" id="backup-user-email" placeholder="e.g. ashenafihailay645@gmail.com">
+        <button class="btn-navy" onclick="cloudBackupData()">☁️ Save Backup to Cloud Database</button>
+        <button class="btn-amber" onclick="cloudRestoreData()">🔄 Restore Data from Cloud Database</button>
+        <div id="cloud-backup-msg" class="status-msg"></div>
+    </div>
+
+    <!-- Inventory Table -->
+    <div class="section-card" style="overflow-x:auto;">
+        <div class="section-title">📦 Current Stock Inventory</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Barcode</th>
+                    <th>Material</th>
+                    <th>Unit</th>
+                    <th>Stock</th>
+                    <th>Unit Price</th>
+                    <th>Total Value</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="inventory-list"></tbody>
+        </table>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <b style="color:#0f2b48;">⚙️ EmailJS Settings</b>
+                <button class="close-btn" onclick="closeSettings()">&times;</button>
+            </div>
+            <span class="modal-label">Receiver Email:</span>
+            <input type="email" id="cfg-email" placeholder="e.g. ashenafihailay645@gmail.com">
+            <span class="modal-label">Public Key (Passkey):</span>
+            <input type="text" id="cfg-passkey" placeholder="e.g. 8JupT1wuqer_SMq3p">
+            <span class="modal-label">Service ID:</span>
+            <input type="text" id="cfg-service-id" placeholder="e.g. service_g810m8a">
+            <span class="modal-label">Low Stock Template ID:</span>
+            <input type="text" id="cfg-low-template" placeholder="e.g. template_6tpdips">
+            <span class="modal-label">Daily Report Template ID:</span>
+            <input type="text" id="cfg-report-template" placeholder="e.g. template_tqgxj1w">
+            <button class="btn-navy" style="margin-top:10px;" onclick="saveSettings()">Save Configuration</button>
+        </div>
+    </div>
+
+    <!-- Receipt Modal -->
+    <div id="receipt-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="receipt-header">
+                <h3 style="margin: 0; color: #0f2b48;">OFFICIAL INVOICE / RECEIPT</h3>
+                <p style="margin: 4px 0 0 0; font-size: 11px; color: #64748b;">Storeman Management System</p>
+            </div>
+            <div class="receipt-row"><span>Invoice No:</span> <b id="r-inv">-</b></div>
+            <div class="receipt-row"><span>Date:</span> <span id="r-date">-</span></div>
+            <div class="receipt-row"><span>Customer:</span> <b id="r-cust">-</b></div>
+            <div class="receipt-row"><span>Phone:</span> <span id="r-phone">-</span></div>
+            <hr style="border: 0.5px dashed #cbd5e1; margin: 10px 0;">
+            <div class="receipt-row"><span>Item:</span> <span id="r-item">-</span></div>
+            <div class="receipt-row"><span>Quantity:</span> <span id="r-qty">-</span></div>
+            <div class="receipt-row"><span>Unit Price:</span> <span id="r-price">-</span></div>
+            <hr style="border: 0.5px dashed #cbd5e1; margin: 10px 0;">
+            <div class="receipt-row" style="font-size: 15px;"><span>TOTAL AMOUNT:</span> <b id="r-total" style="color: #059669;">-</b></div>
+            
+            <div style="margin-top: 15px; display: flex; flex-direction: column; gap: 8px;">
+                <button class="btn-whatsapp" onclick="sendWhatsAppReceipt()">📲 Send via WhatsApp</button>
+                <button class="btn-amber" onclick="closeReceiptModal()">Close Window</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://cfnrbgfczqfpmdjzzbia.supabase.co';
+        const supabaseKey = 'sb_publishable_AN3kSG6xIx38ThIMg4o28w_u6kPIrn2';
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+        let localProducts = JSON.parse(localStorage.getItem('products_store') || '[]');
+        let localWarehouses = JSON.parse(localStorage.getItem('warehouses_store') || '[]');
+        let localSuppliers = JSON.parse(localStorage.getItem('suppliers_store') || '[]');
+        let localTransactions = JSON.parse(localStorage.getItem('transactions_store') || '[]');
+        let activeReceiptData = null;
+
+        function initEmailJS() {
+            const passkey = localStorage.getItem('cfg_passkey') || '8JupT1wuqer_SMq3p';
+            if (passkey && typeof emailjs !== 'undefined') { emailjs.init(passkey); }
+        }
+
+        function loadSettingsUI() {
+            const savedEmail = localStorage.getItem('cfg_email') || 'ashenafihailay645@gmail.com';
+            document.getElementById('cfg-email').value = savedEmail;
+            document.getElementById('backup-user-email').value = savedEmail;
+            document.getElementById('cfg-passkey').value = localStorage.getItem('cfg_passkey') || '8JupT1wuqer_SMq3p';
+            document.getElementById('cfg-service-id').value = localStorage.getItem('cfg_service_id') || 'service_g810m8a';
+            document.getElementById('cfg-low-template').value = localStorage.getItem('cfg_low_template') || 'template_6tpdips';
+            document.getElementById('cfg-report-template').value = localStorage.getItem('cfg_report_template') || 'template_tqgxj1w';
+        }
+
+        function openSettings() { loadSettingsUI(); document.getElementById('settingsModal').style.display = 'flex'; }
+        function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
+
+        function saveSettings() {
+            const emailVal = document.getElementById('cfg-email').value.trim();
+            localStorage.setItem('cfg_email', emailVal);
+            localStorage.setItem('cfg_passkey', document.getElementById('cfg-passkey').value.trim());
+            localStorage.setItem('cfg_service_id', document.getElementById('cfg-service-id').value.trim());
+            localStorage.setItem('cfg_low_template', document.getElementById('cfg-low-template').value.trim());
+            localStorage.setItem('cfg_report_template', document.getElementById('cfg-report-template').value.trim());
+            
+            document.getElementById('backup-user-email').value = emailVal;
+            initEmailJS();
+            closeSettings();
+            alert("✅ Settings Saved Successfully!");
+        }
+
+        function renderUI() {
+            let totalStock = 0, totalValuation = 0, lowStockCount = 0;
+            let productOptions = '<option value="">-- Select Material --</option>';
+            let supOptions = '<option value="">-- Select Supplier --</option>';
+            let inventoryHTML = '';
+
+            localSuppliers.forEach(s => { supOptions += `<option value="${s.name}">${s.name}</option>`; });
+
+            localProducts.forEach((item, index) => {
+                const qty = parseInt(item.quantity) || 0;
+                const min = parseInt(item.min_stock) || 0;
+                const price = parseFloat(item.unit_price) || 0;
+                const totalVal = qty * price;
+
+                totalStock += qty;
+                totalValuation += totalVal;
+                const isLow = qty <= min;
+                if (isLow) lowStockCount++;
+
+                productOptions += `<option value="${index}">${item.name} (${qty} ${item.unit || 'Pcs'})</option>`;
+                inventoryHTML += `
+                    <tr>
+                        <td><code>${item.barcode || '-'}</code></td>
+                        <td><b>${item.name}</b></td>
+                        <td>${item.unit || 'Pcs'}</td>
+                        <td><b>${qty}</b></td>
+                        <td>ETB ${price.toFixed(2)}</td>
+                        <td><b>ETB ${totalVal.toFixed(2)}</b></td>
+                        <td>${isLow ? '<span class="badge-low">⚠️ LOW</span>' : '<span class="badge-ok">✓ OK</span>'}</td>
+                        <td><button class="btn-delete" onclick="deleteMaterial(${index})">Del</button></td>
+                    </tr>`;
+            });
+
+            document.getElementById('total-materials').innerText = localProducts.length;
+            document.getElementById('total-stock').innerText = totalStock;
+            document.getElementById('total-valuation').innerText = totalValuation.toLocaleString('en-US', { minimumFractionDigits: 2 });
+            document.getElementById('low-stock').innerText = lowStockCount;
+
+            document.getElementById('inventory-list').innerHTML = inventoryHTML || '<tr><td colspan="8">No materials registered.</td></tr>';
+            document.getElementById('stockin-material').innerHTML = productOptions;
+            document.getElementById('so-material').innerHTML = productOptions;
+            document.getElementById('stockin-supplier').innerHTML = supOptions;
+        }
+
+        function addWarehouse() {
+            const name = document.getElementById('wh-name').value.trim();
+            const location = document.getElementById('wh-loc').value.trim();
+            if(!name) return alert("Warehouse name required!");
+            localWarehouses.push({ name, location });
+            localStorage.setItem('warehouses_store', JSON.stringify(localWarehouses));
+            document.getElementById('wh-name').value = '';
+            document.getElementById('wh-loc').value = '';
+            renderUI(); alert("✅ Warehouse Saved!");
+        }
+
+        function addSupplier() {
+            const name = document.getElementById('sup-name').value.trim();
+            const phone = document.getElementById('sup-phone').value.trim();
+            if(!name) return alert("Supplier name required!");
+            localSuppliers.push({ name, phone });
+            localStorage.setItem('suppliers_store', JSON.stringify(localSuppliers));
+            document.getElementById('sup-name').value = '';
+            document.getElementById('sup-phone').value = '';
+            renderUI(); alert("✅ Supplier Saved!");
+        }
+
+        async function addMaterial() {
+            const barcode = document.getElementById('m-barcode').value.trim();
+            const name = document.getElementById('m-name').value.trim();
+            const unit = document.getElementById('m-unit').value.trim() || 'Pcs';
+            const quantity = parseInt(document.getElementById('m-stock').value) || 0;
+            const unit_price = parseFloat(document.getElementById('m-price').value) || 0;
+            const min_stock = parseInt(document.getElementById('m-min').value) || 0;
+            const msgBox = document.getElementById('add-material-msg');
+
+            if(!name) { alert("እባክዎን የዕቃውን ስም ያስገቡ!"); return; }
+
+            const newProduct = { id: 'prod_' + Date.now(), barcode, name, unit, quantity, unit_price, min_stock, created_at: new Date().toISOString() };
+            localProducts.push(newProduct);
+            localStorage.setItem('products_store', JSON.stringify(localProducts));
+            renderUI();
+
+            try { await supabaseClient.from('materials').insert([{ name, unit, quantity, unit_price, min_stock }]); } catch(e){}
+
+            document.getElementById('m-barcode').value = '';
+            document.getElementById('m-name').value = '';
+            document.getElementById('m-unit').value = '';
+            document.getElementById('m-stock').value = '';
+            document.getElementById('m-price').value = '';
+            document.getElementById('m-min').value = '';
+
+            if (quantity <= min_stock) {
+                triggerLowStockAlert({ material_name: name, current_stock: quantity, unit: unit, minimum_stock: min_stock, type: 'INITIAL', quantity: quantity, reference: 'Initial Setup' }, msgBox);
+            } else {
+                msgBox.className = "status-msg msg-success";
+                msgBox.innerText = "✅ ዕቃው በትክክል ተመዝግቧል!";
+                setTimeout(() => { msgBox.innerText = ''; }, 4000);
+            }
+        }
+
+        async function processStockIn() {
+            const idx = document.getElementById('stockin-material').value;
+            const qty = parseInt(document.getElementById('stockin-qty').value);
+            const supplier = document.getElementById('stockin-supplier').value;
+            const ref = document.getElementById('stockin-ref').value.trim() || '-';
+            const msgBox = document.getElementById('stockin-msg');
+
+            if(idx === "" || !qty || qty <= 0) return alert("Please select product and valid quantity!");
+
+            let product = localProducts[idx];
+            product.quantity = parseInt(product.quantity) + qty;
+            localStorage.setItem('products_store', JSON.stringify(localProducts));
+
+            const newTrans = { id: 'trans_' + Date.now(), material_name: product.name, type: 'IN', quantity: qty, supplier, unit_price: product.unit_price, reference: ref, created_at: new Date().toISOString() };
+            localTransactions.unshift(newTrans);
+            localStorage.setItem('transactions_store', JSON.stringify(localTransactions));
+            renderUI();
+
+            try {
+                await supabaseClient.from('materials').update({ quantity: product.quantity }).eq('name', product.name);
+                await supabaseClient.from('transactions').insert([{ material_name: product.name, type: 'IN', quantity: qty, unit_price: product.unit_price, reference: ref }]);
+            } catch(e){}
+
+            document.getElementById('stockin-qty').value = '';
+            document.getElementById('stockin-ref').value = '';
+            msgBox.className = "status-msg msg-success";
+            msgBox.innerText = "✅ Stock In Successfully Logged!";
+            setTimeout(() => { msgBox.innerText = ''; }, 4000);
+        }
+
+        async function processSalesOrder() {
+            const customer = document.getElementById('so-customer').value.trim();
+            const contact = document.getElementById('so-contact').value.trim();
+            const idx = document.getElementById('so-material').value;
+            const qty = parseInt(document.getElementById('so-qty').value);
+            const inv = document.getElementById('so-inv').value.trim() || 'INV-' + Math.floor(1000 + Math.random() * 9000);
+            const msgBox = document.getElementById('so-msg');
+
+            if(idx === "" || !qty || qty <= 0 || !customer) return alert("Customer Name, Product and Quantity required!");
+
+            let product = localProducts[idx];
+            if(parseInt(product.quantity) < qty) return alert("Insufficient Stock Available!");
+
+            msgBox.className = "status-msg msg-sending";
+            msgBox.innerText = "⏳ Saving transaction to Supabase Database...";
+
+            product.quantity = parseInt(product.quantity) - qty;
+            const totalAmount = qty * parseFloat(product.unit_price || 0);
+
+            localStorage.setItem('products_store', JSON.stringify(localProducts));
+
+            const newTrans = { id: 'trans_' + Date.now(), material_name: product.name, type: 'OUT', customer, contact, quantity: qty, unit_price: product.unit_price, totalAmount, reference: inv, created_at: new Date().toISOString() };
+            localTransactions.unshift(newTrans);
+            localStorage.setItem('transactions_store', JSON.stringify(localTransactions));
+            renderUI();
+
+            // Save Sales Data directly into Supabase
+            try {
+                await supabaseClient.from('materials').update({ quantity: product.quantity }).eq('name', product.name);
+                await supabaseClient.from('transactions').insert([{ material_name: product.name, type: 'OUT', quantity: qty, unit_price: product.unit_price, reference: inv }]);
+                await supabaseClient.from('sales_orders').insert([{ customer_name: customer, total_amount: totalAmount, invoice_number: inv }]);
+            } catch(e){
+                console.log("Supabase save warning: ", e);
+            }
+
+            msgBox.className = "status-msg msg-success";
+            msgBox.innerText = "✅ Data Saved to Supabase!";
+
+            // Low Stock Check
+            if (product.quantity <= (product.min_stock || 0)) {
+                triggerLowStockAlert({ material_name: product.name, current_stock: product.quantity, unit: product.unit || 'Pcs', minimum_stock: product.min_stock || 0, type: 'OUT', quantity: qty, reference: inv }, msgBox);
+            }
+
+            // Store Active Receipt Data
+            activeReceiptData = {
+                inv: inv,
+                date: new Date().toLocaleDateString(),
+                customer: customer,
+                phone: contact,
+                item: product.name,
+                qty: `${qty} ${product.unit || ''}`,
+                unit_price: `ETB ${parseFloat(product.unit_price || 0).toFixed(2)}`,
+                total: `ETB ${totalAmount.toFixed(2)}`
+            };
+
+            // Display Receipt Modal
+            document.getElementById('r-inv').innerText = activeReceiptData.inv;
+            document.getElementById('r-date').innerText = activeReceiptData.date;
+            document.getElementById('r-cust').innerText = activeReceiptData.customer;
+            document.getElementById('r-phone').innerText = activeReceiptData.phone || 'N/A';
+            document.getElementById('r-item').innerText = activeReceiptData.item;
+            document.getElementById('r-qty').innerText = activeReceiptData.qty;
+            document.getElementById('r-price').innerText = activeReceiptData.unit_price;
+            document.getElementById('r-total').innerText = activeReceiptData.total;
+
+            document.getElementById('receipt-modal').style.display = 'flex';
+
+            document.getElementById('so-customer').value = '';
+            document.getElementById('so-contact').value = '';
+            document.getElementById('so-qty').value = '';
+            document.getElementById('so-inv').value = '';
+        }
+
+        function sendWhatsAppReceipt() {
+            if (!activeReceiptData) return;
+
+            let phone = activeReceiptData.phone.replace(/[^0-9]/g, ''); // Clean non-numeric characters
+            
+            // Convert Ethiopian phone format (09... or 07...) to international (+251...)
+            if (phone.startsWith('09') || phone.startsWith('07')) {
+                phone = '251' + phone.substring(1);
+            } else if (phone.startsWith('9') || phone.startsWith('7')) {
+                phone = '251' + phone;
+            }
+
+            const message = `🧾 *OFFICIAL INVOICE / RECEIPT*\n` +
+                `*Storeman Management System*\n` +
+                `-----------------------------------\n` +
+                `*Invoice No:* ${activeReceiptData.inv}\n` +
+                `*Date:* ${activeReceiptData.date}\n` +
+                `*Customer:* ${activeReceiptData.customer}\n` +
+                `-----------------------------------\n` +
+                `*Item:* ${activeReceiptData.item}\n` +
+                `*Quantity:* ${activeReceiptData.qty}\n` +
+                `*Unit Price:* ${activeReceiptData.unit_price}\n` +
+                `-----------------------------------\n` +
+                `*TOTAL AMOUNT:* ${activeReceiptData.total}\n\n` +
+                `ለገዙን እናመሰግናለን! / Thank you for your business!`;
+
+            const encodedMessage = encodeURIComponent(message);
+            
+            let whatsappUrl = `https://wa.me/${phone}?text=${encodedMessage}`;
+            if (!phone) {
+                whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+            }
+
+            window.open(whatsappUrl, '_blank');
+        }
+
+        function closeReceiptModal() { document.getElementById('receipt-modal').style.display = 'none'; }
+
+        async function deleteMaterial(index) {
+            if (confirm("ይህንን ዕቃ መሰረዝ እርግጠኛ ነዎት?")) {
+                const prod = localProducts[index];
+                localProducts.splice(index, 1);
+                localStorage.setItem('products_store', JSON.stringify(localProducts));
+                renderUI();
+                if (prod) { try { await supabaseClient.from('materials').delete().eq('name', prod.name); } catch(e){} }
+            }
+        }
+
+        function triggerLowStockAlert(params, targetMsgDiv) {
+            const email = localStorage.getItem('cfg_email') || 'ashenafihailay645@gmail.com';
+            const serviceId = localStorage.getItem('cfg_service_id') || 'service_g810m8a';
+            const templateId = localStorage.getItem('cfg_low_template') || 'template_6tpdips';
+            const passkey = localStorage.getItem('cfg_passkey') || '8JupT1wuqer_SMq3p';
+
+            if (targetMsgDiv) { targetMsgDiv.className = "status-msg msg-sending"; targetMsgDiv.innerText = "⏳ Sending Low Stock Alert Email..."; }
+
+            const alertText = `⚠️ LOW STOCK ALERT\nMaterial Name: ${params.material_name}\nCurrent Stock: ${params.current_stock} ${params.unit}\nMinimum Stock Threshold: ${params.minimum_stock} ${params.unit}\n\nTransaction Details:\nType: ${params.type}\nQuantity: ${params.quantity}\nReference: ${params.reference}\nDate: ${new Date().toLocaleString()}\n\nPlease restock this material as soon as possible.`;
+
+            if (serviceId && templateId && passkey && typeof emailjs !== 'undefined') {
+                emailjs.send(serviceId, templateId, {
+                    to_email: email,
+                    material_name: params.material_name,
+                    current_stock: params.current_stock,
+                    unit: params.unit,
+                    minimum_stock: params.minimum_stock,
+                    type: params.type,
+                    quantity: params.quantity,
+                    reference: params.reference,
+                    date: new Date().toLocaleString(),
+                    message: alertText
+                }, passkey).then(() => {
+                    if (targetMsgDiv) { targetMsgDiv.className = "status-msg msg-success"; targetMsgDiv.innerText = "⚠️ Low Stock Alert Email Sent!"; }
+                }).catch(() => {
+                    if (targetMsgDiv) { targetMsgDiv.className = "status-msg msg-error"; targetMsgDiv.innerText = "❌ Email Sending Failed!"; }
+                });
+            }
+        }
+
+        function sendDailyReport() {
+            const email = localStorage.getItem('cfg_email') || 'ashenafihailay645@gmail.com';
+            const serviceId = localStorage.getItem('cfg_service_id') || 'service_g810m8a';
+            const templateId = localStorage.getItem('cfg_report_template') || 'template_tqgxj1w';
+            const passkey = localStorage.getItem('cfg_passkey') || '8JupT1wuqer_SMq3p';
+            const msgBox = document.getElementById('daily-report-msg');
+
+            msgBox.className = "status-msg msg-sending";
+            msgBox.innerText = "⏳ Sending Daily Summary Report...";
+
+            let totalIn = 0, totalOut = 0, totalValuation = 0;
+            let reportDetails = '';
+
+            localProducts.forEach(item => {
+                const qty = parseInt(item.quantity) || 0;
+                const price = parseFloat(item.unit_price) || 0;
+                totalValuation += (qty * price);
+            });
+
+            localTransactions.forEach(t => {
+                const qty = parseInt(t.quantity) || 0;
+                const uPrice = parseFloat(t.unit_price) || 0;
+                const totalPrice = qty * uPrice;
+
+                if(t.type === 'IN') totalIn += qty;
+                if(t.type === 'OUT') totalOut += qty;
+
+                reportDetails += `• ${t.material_name} | Type: ${t.type} | Qty: ${qty} | Unit Price: ETB ${uPrice.toFixed(2)} | Total: ETB ${totalPrice.toFixed(2)} | Ref: ${t.reference || '-'}\n`;
+            });
+
+            if (!reportDetails) reportDetails = 'No movements recorded today.';
+
+            const reportDateStr = new Date().toLocaleDateString();
+
+            if (serviceId && templateId && passkey && typeof emailjs !== 'undefined') {
+                emailjs.send(serviceId, templateId, {
+                    to_email: email,
+                    report_date: reportDateStr,
+                    total_in: totalIn,
+                    total_out: totalOut,
+                    total_valuation: totalValuation.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+                    total_items: localProducts.length,
+                    report_details: reportDetails
+                }, passkey).then(() => {
+                    msgBox.className = "status-msg msg-success";
+                    msgBox.innerText = "✅ Daily Summary Report Sent Successfully!";
+                }).catch(() => {
+                    msgBox.className = "status-msg msg-error";
+                    msgBox.innerText = "❌ Report Sending Failed!";
+                });
+            }
+        }
+
+        async function cloudBackupData() {
+            const email = document.getElementById('backup-user-email').value.trim().toLowerCase();
+            const msgBox = document.getElementById('cloud-backup-msg');
+
+            if (!email) { alert("እባክዎን የኢሜይል አድራሻዎን ያስገቡ!"); return; }
+
+            msgBox.className = "status-msg msg-sending";
+            msgBox.innerText = "⏳ Saving Full ERP Backup to Cloud Database...";
+
+            const fullData = {
+                products: localProducts,
+                warehouses: localWarehouses,
+                suppliers: localSuppliers,
+                transactions: localTransactions
+            };
+
+            try {
+                const { error } = await supabaseClient
+                    .from('store_backups')
+                    .upsert({ email, materials_data: JSON.stringify(fullData), updated_at: new Date().toISOString() }, { onConflict: 'email' });
+
+                if (error) throw error;
+
+                msgBox.className = "status-msg msg-success";
+                msgBox.innerText = `☁️ Full ERP Backup saved successfully for ${email}!`;
+                setTimeout(() => { msgBox.innerText = ''; }, 4000);
+            } catch (err) {
+                msgBox.className = "status-msg msg-error";
+                msgBox.innerText = "❌ Cloud Backup Failed!";
+            }
+        }
+
+        async function cloudRestoreData() {
+            const email = document.getElementById('backup-user-email').value.trim().toLowerCase();
+            const msgBox = document.getElementById('cloud-backup-msg');
+
+            if (!email) { alert("እባክዎን የኢሜይል አድራሻዎን ያስገቡ!"); return; }
+
+            msgBox.className = "status-msg msg-sending";
+            msgBox.innerText = "⏳ Fetching Backup Data from Cloud...";
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('store_backups')
+                    .select('*')
+                    .eq('email', email)
+                    .single();
+
+                if (error || !data) {
+                    msgBox.className = "status-msg msg-error";
+                    msgBox.innerText = "⚠️ No backup found for this email!";
+                    return;
+                }
+
+                if (data.materials_data) {
+                    const restored = JSON.parse(data.materials_data);
+                    if (Array.isArray(restored)) {
+                        localProducts = restored;
+                    } else {
+                        if (restored.products) localProducts = restored.products;
+                        if (restored.warehouses) localWarehouses = restored.warehouses;
+                        if (restored.suppliers) localSuppliers = restored.suppliers;
+                        if (restored.transactions) localTransactions = restored.transactions;
+                    }
+
+                    localStorage.setItem('products_store', JSON.stringify(localProducts));
+                    localStorage.setItem('warehouses_store', JSON.stringify(localWarehouses));
+                    localStorage.setItem('suppliers_store', JSON.stringify(localSuppliers));
+                    localStorage.setItem('transactions_store', JSON.stringify(localTransactions));
+                }
+
+                renderUI();
+                msgBox.className = "status-msg msg-success";
+                msgBox.innerText = "✅ Data Restored Successfully from Cloud Database!";
+                setTimeout(() => { msgBox.innerText = ''; }, 4000);
+            } catch (err) {
+                msgBox.className = "status-msg msg-error";
+                msgBox.innerText = "❌ Cloud Restore Failed!";
+            }
+        }
+
+        initEmailJS();
+        loadSettingsUI();
+        renderUI();
+    </script>
+</body>
+</html>
