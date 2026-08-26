@@ -685,9 +685,5 @@
     </script>
 <script src="storeman-auth.js"></script>
 <script src="./storeman-security.js"></script>
-
-<!-- STOREMAN FINAL SECURITY -->
-<script src="storeman-final-security.js"></script>
-<script src="storeman-admin-notification.js"></script>
-\n</body>
+</body>
 </html>
