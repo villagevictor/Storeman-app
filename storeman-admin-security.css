@@ -1,0 +1,69 @@
+.storeman-admin-panel {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 18px;
+  margin-top: 18px;
+  border: 1px solid #ddd;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.storeman-admin-panel h2 {
+  margin-top: 0;
+}
+
+.storeman-admin-panel label {
+  display: block;
+  margin: 12px 0;
+  font-weight: 600;
+}
+
+.storeman-admin-panel input,
+.storeman-admin-panel select {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 6px;
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  font-size: 16px;
+}
+
+.storeman-admin-panel button {
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  margin: 6px 4px 6px 0;
+}
+
+.storeman-admin-save {
+  font-weight: 700;
+}
+
+.storeman-permission-card {
+  border: 1px solid #e2e2e2;
+  border-radius: 12px;
+  padding: 12px;
+  margin: 8px 0;
+}
+
+.storeman-permission-actions {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(70px,1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.storeman-permission-actions label {
+  margin: 0;
+  font-weight: 400;
+  font-size: 14px;
+}
+
+.storeman-permission-actions input {
+  width: auto;
+  display: inline-block;
+}
