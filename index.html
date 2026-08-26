@@ -691,3 +691,50 @@
 <script src="storeman-admin-notification.js"></script>
 \n</body>
 </html>
+
+<style id="storeman-final-admin-ui-security">
+/*
+ * Storeman FINAL UI SECURITY
+ *
+ * User Management / Role / Company / Warehouse /
+ * Permissions are administrator-only.
+ */
+
+[data-admin-only] {
+  display:none;
+}
+
+body.storeman-normal-user
+#storeman-admin-user-management {
+  display:none !important;
+}
+</style>
+
+<script>
+(function(){
+
+  function protectAdminUI(){
+
+    const admin =
+      window.__storemanIsAdmin === true;
+
+    if(admin) return;
+
+    document
+      .querySelectorAll(
+        '[data-admin-only],.admin-only'
+      )
+      .forEach(
+        el => {
+          el.style.display='none';
+        }
+      );
+  }
+
+  setInterval(
+    protectAdminUI,
+    1000
+  );
+
+})();
+</script>

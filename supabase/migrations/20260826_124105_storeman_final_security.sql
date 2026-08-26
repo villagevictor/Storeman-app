@@ -1,0 +1,815 @@
+-- ============================================================
+-- STOREMAN FINAL SECURITY MIGRATION
+-- ============================================================
+
+create extension if not exists pgcrypto;
+
+create schema if not exists private;
+
+-- ============================================================
+-- CORE TABLES
+-- ============================================================
+
+create table if not exists public.companies (
+    id uuid primary key default gen_random_uuid(),
+    name text not null unique,
+    created_at timestamptz not null default now()
+);
+
+create table if not exists public.warehouses (
+    id uuid primary key default gen_random_uuid(),
+    company_id uuid,
+    name text not null,
+    location text,
+    created_at timestamptz not null default now()
+);
+
+create table if not exists public.profiles (
+    id uuid primary key references auth.users(id) on delete cascade,
+    full_name text,
+    email text,
+    role text not null default 'staff',
+    status text not null default 'pending',
+    company_id uuid,
+    warehouse_id uuid,
+    permissions jsonb not null default '{}'::jsonb,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+create table if not exists public.activity_logs (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references auth.users(id) on delete cascade,
+    action text not null,
+    entity text,
+    entity_id text,
+    details jsonb not null default '{}'::jsonb,
+    created_at timestamptz not null default now()
+);
+
+-- ============================================================
+-- ERP TABLES
+-- ============================================================
+
+create table if not exists public.materials (
+    id uuid primary key default gen_random_uuid(),
+    barcode text,
+    name text not null,
+    unit text default 'Pcs',
+    quantity numeric not null default 0,
+    unit_price numeric not null default 0,
+    min_stock numeric not null default 0,
+    company_id uuid,
+    warehouse_id uuid,
+    created_by uuid,
+    created_at timestamptz not null default now()
+);
+
+create table if not exists public.suppliers (
+    id uuid primary key default gen_random_uuid(),
+    name text not null,
+    phone text,
+    email text,
+    address text,
+    company_id uuid,
+    warehouse_id uuid,
+    created_by uuid,
+    created_at timestamptz not null default now()
+);
+
+create table if not exists public.transactions (
+    id uuid primary key default gen_random_uuid(),
+    material_name text,
+    type text,
+    quantity numeric not null default 0,
+    supplier text,
+    customer text,
+    contact text,
+    unit_price numeric not null default 0,
+    reference text,
+    company_id uuid,
+    warehouse_id uuid,
+    created_by uuid,
+    created_at timestamptz not null default now()
+);
+
+create table if not exists public.sales_orders (
+    id uuid primary key default gen_random_uuid(),
+    customer_name text,
+    total_amount numeric not null default 0,
+    invoice_number text,
+    company_id uuid,
+    warehouse_id uuid,
+    created_by uuid,
+    created_at timestamptz not null default now()
+);
+
+-- ============================================================
+-- COMPATIBILITY COLUMNS
+-- ============================================================
+
+alter table public.warehouses
+    add column if not exists company_id uuid;
+
+alter table public.profiles
+    add column if not exists full_name text;
+
+alter table public.profiles
+    add column if not exists email text;
+
+alter table public.profiles
+    add column if not exists role text;
+
+alter table public.profiles
+    add column if not exists status text;
+
+alter table public.profiles
+    add column if not exists company_id uuid;
+
+alter table public.profiles
+    add column if not exists warehouse_id uuid;
+
+alter table public.profiles
+    add column if not exists permissions jsonb;
+
+alter table public.profiles
+    add column if not exists created_at timestamptz default now();
+
+alter table public.profiles
+    add column if not exists updated_at timestamptz default now();
+
+alter table public.materials
+    add column if not exists company_id uuid;
+
+alter table public.materials
+    add column if not exists warehouse_id uuid;
+
+alter table public.materials
+    add column if not exists created_by uuid;
+
+alter table public.suppliers
+    add column if not exists company_id uuid;
+
+alter table public.suppliers
+    add column if not exists warehouse_id uuid;
+
+alter table public.suppliers
+    add column if not exists created_by uuid;
+
+alter table public.transactions
+    add column if not exists company_id uuid;
+
+alter table public.transactions
+    add column if not exists warehouse_id uuid;
+
+alter table public.transactions
+    add column if not exists created_by uuid;
+
+alter table public.sales_orders
+    add column if not exists company_id uuid;
+
+alter table public.sales_orders
+    add column if not exists warehouse_id uuid;
+
+alter table public.sales_orders
+    add column if not exists created_by uuid;
+
+-- ============================================================
+-- DEFAULT COMPANY
+-- ============================================================
+
+insert into public.companies(name)
+values ('Storeman Main Company')
+on conflict (name) do nothing;
+
+insert into public.warehouses(company_id,name,location)
+select
+    c.id,
+    'Main Warehouse',
+    'Main'
+from public.companies c
+where c.name='Storeman Main Company'
+and not exists (
+    select 1
+    from public.warehouses w
+    where w.company_id=c.id
+);
+
+-- ============================================================
+-- DEFAULT PERMISSIONS
+-- ============================================================
+
+create or replace function private.default_permissions()
+returns jsonb
+language sql
+immutable
+as $$
+select '{
+  "dashboard":{"view":true,"create":false,"update":false,"delete":false},
+  "materials":{"view":false,"create":false,"update":false,"delete":false},
+  "stock_in":{"view":false,"create":false,"update":false,"delete":false},
+  "stock_out":{"view":false,"create":false,"update":false,"delete":false},
+  "suppliers":{"view":false,"create":false,"update":false,"delete":false},
+  "warehouses":{"view":false,"create":false,"update":false,"delete":false},
+  "invoicing":{"view":false,"create":false,"update":false,"delete":false},
+  "reports":{"view":false,"create":false,"update":false,"delete":false},
+  "backup":{"view":false,"create":false,"update":false,"delete":false},
+  "settings":{"view":false,"create":false,"update":false,"delete":false}
+}'::jsonb
+$$;
+
+-- ============================================================
+-- NEW USER PROFILE
+-- ============================================================
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    default_company uuid;
+begin
+
+    select id
+    into default_company
+    from public.companies
+    where name='Storeman Main Company'
+    limit 1;
+
+    insert into public.profiles(
+        id,
+        full_name,
+        email,
+        role,
+        status,
+        company_id,
+        warehouse_id,
+        permissions
+    )
+    values(
+        new.id,
+        coalesce(new.raw_user_meta_data->>'full_name',''),
+        new.email,
+        case
+            when lower(coalesce(new.email,'')) =
+                 lower('ashenafihailay779@gmail.com')
+            then 'admin'
+            else 'staff'
+        end,
+        case
+            when lower(coalesce(new.email,'')) =
+                 lower('ashenafihailay779@gmail.com')
+            then 'active'
+            else 'pending'
+        end,
+        default_company,
+        null,
+        case
+            when lower(coalesce(new.email,'')) =
+                 lower('ashenafihailay779@gmail.com')
+            then jsonb_build_object(
+                'dashboard',jsonb_build_object('view',true,'create',true,'update',true,'delete',true),
+                'materials',jsonb_build_object('view',true,'create',true,'update',true,'delete',true),
+                'stock_in',jsonb_build_object('view',true,'create',true,'update',true,'delete',true),
+                'stock_out',jsonb_build_object('view',true,'create',true,'update',true,'delete',true),
+                'suppliers',jsonb_build_object('view',true,'create',true,'update',true,'delete',true),
+                'warehouses',jsonb_build_object('view',true,'create',true,'update',true,'delete',true),
+                'invoicing',jsonb_build_object('view',true,'create',true,'update',true,'delete',true),
+                'reports',jsonb_build_object('view',true,'create',true,'update',true,'delete',true),
+                'backup',jsonb_build_object('view',true,'create',true,'update',true,'delete',true),
+                'settings',jsonb_build_object('view',true,'create',true,'update',true,'delete',true)
+            )
+            else private.default_permissions()
+        end
+    )
+    on conflict(id)
+    do update set email=excluded.email;
+
+    return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+
+create trigger on_auth_user_created
+after insert on auth.users
+for each row
+execute procedure public.handle_new_user();
+
+-- ============================================================
+-- SECURITY HELPERS
+-- ============================================================
+
+create or replace function private.is_active_user()
+returns boolean
+language sql
+stable
+security definer
+set search_path=public
+as $$
+select exists(
+    select 1
+    from public.profiles p
+    where p.id=(select auth.uid())
+    and p.status='active'
+);
+$$;
+
+create or replace function private.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path=public
+as $$
+select exists(
+    select 1
+    from public.profiles p
+    where p.id=(select auth.uid())
+    and p.status='active'
+    and p.role='admin'
+);
+$$;
+
+create or replace function private.current_company_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path=public
+as $$
+select company_id
+from public.profiles
+where id=(select auth.uid())
+limit 1;
+$$;
+
+create or replace function private.current_warehouse_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path=public
+as $$
+select warehouse_id
+from public.profiles
+where id=(select auth.uid())
+limit 1;
+$$;
+
+create or replace function private.can_feature(
+    feature_name text,
+    action_name text
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path=public
+as $$
+select
+    private.is_admin()
+    or (
+        private.is_active_user()
+        and coalesce(
+            (
+                select p.permissions
+                from public.profiles p
+                where p.id=(select auth.uid())
+            )->feature_name->>action_name,
+            'false'
+        )::boolean
+    );
+$$;
+
+-- ============================================================
+-- ADMIN-ONLY USER MANAGEMENT
+-- ============================================================
+
+create or replace function private.can_manage_users()
+returns boolean
+language sql
+stable
+security definer
+set search_path=public
+as $$
+select private.is_admin();
+$$;
+
+-- ============================================================
+-- RLS
+-- ============================================================
+
+do $$
+declare
+    t text;
+begin
+
+    foreach t in array array[
+        'companies',
+        'warehouses',
+        'profiles',
+        'activity_logs',
+        'materials',
+        'suppliers',
+        'transactions',
+        'sales_orders'
+    ]
+    loop
+
+        execute format(
+            'alter table public.%I enable row level security',
+            t
+        );
+
+        execute format(
+            'revoke all on table public.%I from anon',
+            t
+        );
+
+        execute format(
+            'revoke all on table public.%I from authenticated',
+            t
+        );
+
+        execute format(
+            'grant select,insert,update,delete on table public.%I to authenticated',
+            t
+        );
+
+    end loop;
+
+end
+$$;
+
+-- ============================================================
+-- COMPANIES
+-- ============================================================
+
+drop policy if exists companies_select on public.companies;
+drop policy if exists companies_insert on public.companies;
+drop policy if exists companies_update on public.companies;
+drop policy if exists companies_delete on public.companies;
+
+create policy companies_select
+on public.companies
+for select
+to authenticated
+using(
+    private.is_active_user()
+    and (
+        private.is_admin()
+        or id=private.current_company_id()
+    )
+);
+
+create policy companies_insert
+on public.companies
+for insert
+to authenticated
+with check(private.is_admin());
+
+create policy companies_update
+on public.companies
+for update
+to authenticated
+using(private.is_admin())
+with check(private.is_admin());
+
+create policy companies_delete
+on public.companies
+for delete
+to authenticated
+using(private.is_admin());
+
+-- ============================================================
+-- WAREHOUSES
+-- ============================================================
+
+drop policy if exists warehouses_select on public.warehouses;
+drop policy if exists warehouses_insert on public.warehouses;
+drop policy if exists warehouses_update on public.warehouses;
+drop policy if exists warehouses_delete on public.warehouses;
+
+create policy warehouses_select
+on public.warehouses
+for select
+to authenticated
+using(
+    private.is_active_user()
+    and (
+        private.is_admin()
+        or (
+            id=private.current_warehouse_id()
+            and company_id=private.current_company_id()
+        )
+    )
+);
+
+create policy warehouses_insert
+on public.warehouses
+for insert
+to authenticated
+with check(private.is_admin());
+
+create policy warehouses_update
+on public.warehouses
+for update
+to authenticated
+using(private.is_admin())
+with check(private.is_admin());
+
+create policy warehouses_delete
+on public.warehouses
+for delete
+to authenticated
+using(private.is_admin());
+
+-- ============================================================
+-- PROFILES
+-- ============================================================
+
+drop policy if exists profiles_select on public.profiles;
+drop policy if exists profiles_update on public.profiles;
+drop policy if exists profiles_delete on public.profiles;
+
+create policy profiles_select
+on public.profiles
+for select
+to authenticated
+using(
+    id=(select auth.uid())
+    or private.is_admin()
+);
+
+create policy profiles_update
+on public.profiles
+for update
+to authenticated
+using(
+    private.is_admin()
+    or id=(select auth.uid())
+)
+with check(
+    private.is_admin()
+    or id=(select auth.uid())
+);
+
+create policy profiles_delete
+on public.profiles
+for delete
+to authenticated
+using(private.is_admin());
+
+-- ============================================================
+-- ACTIVITY LOGS
+-- ============================================================
+
+drop policy if exists activity_logs_select on public.activity_logs;
+drop policy if exists activity_logs_insert on public.activity_logs;
+drop policy if exists activity_logs_update on public.activity_logs;
+drop policy if exists activity_logs_delete on public.activity_logs;
+
+create policy activity_logs_select
+on public.activity_logs
+for select
+to authenticated
+using(
+    private.is_admin()
+    or user_id=(select auth.uid())
+);
+
+create policy activity_logs_insert
+on public.activity_logs
+for insert
+to authenticated
+with check(
+    private.is_active_user()
+    and user_id=(select auth.uid())
+);
+
+create policy activity_logs_update
+on public.activity_logs
+for update
+to authenticated
+using(private.is_admin())
+with check(private.is_admin());
+
+create policy activity_logs_delete
+on public.activity_logs
+for delete
+to authenticated
+using(private.is_admin());
+
+-- ============================================================
+-- ERP DATA RLS
+-- ============================================================
+
+do $$
+declare
+    t text;
+    feature text;
+begin
+
+    foreach t in array[
+        'materials',
+        'suppliers',
+        'transactions',
+        'sales_orders'
+    ]
+    loop
+
+        feature := case
+            when t='materials' then 'materials'
+            when t='suppliers' then 'suppliers'
+            when t='transactions' then 'stock_in'
+            when t='sales_orders' then 'stock_out'
+        end;
+
+        execute format(
+            'drop policy if exists %I_select on public.%I',
+            t,t
+        );
+
+        execute format(
+            'drop policy if exists %I_insert on public.%I',
+            t,t
+        );
+
+        execute format(
+            'drop policy if exists %I_update on public.%I',
+            t,t
+        );
+
+        execute format(
+            'drop policy if exists %I_delete on public.%I',
+            t,t
+        );
+
+        execute format(
+            'create policy %I_select
+             on public.%I
+             for select
+             to authenticated
+             using(
+                private.can_feature(%L,''view'')
+                and company_id=private.current_company_id()
+                and (
+                    private.is_admin()
+                    or warehouse_id=private.current_warehouse_id()
+                )
+             )',
+            t,t,feature
+        );
+
+        execute format(
+            'create policy %I_insert
+             on public.%I
+             for insert
+             to authenticated
+             with check(
+                private.can_feature(%L,''create'')
+                and company_id=private.current_company_id()
+                and (
+                    private.is_admin()
+                    or warehouse_id=private.current_warehouse_id()
+                )
+             )',
+            t,t,feature
+        );
+
+        execute format(
+            'create policy %I_update
+             on public.%I
+             for update
+             to authenticated
+             using(
+                private.can_feature(%L,''update'')
+                and company_id=private.current_company_id()
+                and (
+                    private.is_admin()
+                    or warehouse_id=private.current_warehouse_id()
+                )
+             )
+             with check(
+                private.can_feature(%L,''update'')
+                and company_id=private.current_company_id()
+                and (
+                    private.is_admin()
+                    or warehouse_id=private.current_warehouse_id()
+                )
+             )',
+            t,t,feature,feature
+        );
+
+        execute format(
+            'create policy %I_delete
+             on public.%I
+             for delete
+             to authenticated
+             using(
+                private.can_feature(%L,''delete'')
+                and company_id=private.current_company_id()
+                and (
+                    private.is_admin()
+                    or warehouse_id=private.current_warehouse_id()
+                )
+             )',
+            t,t,feature
+        );
+
+    end loop;
+
+end
+$$;
+
+-- ============================================================
+-- ADMIN BOOTSTRAP
+-- ============================================================
+
+insert into public.profiles(
+    id,
+    email,
+    full_name,
+    role,
+    status,
+    company_id,
+    warehouse_id,
+    permissions
+)
+select
+    u.id,
+    u.email,
+    coalesce(
+        u.raw_user_meta_data->>'full_name',
+        'System Administrator'
+    ),
+    'admin',
+    'active',
+    c.id,
+    null,
+    (
+        select jsonb_object_agg(
+            f,
+            jsonb_build_object(
+                'view',true,
+                'create',true,
+                'update',true,
+                'delete',true
+            )
+        )
+        from unnest(array[
+            'dashboard',
+            'materials',
+            'stock_in',
+            'stock_out',
+            'suppliers',
+            'warehouses',
+            'invoicing',
+            'reports',
+            'backup',
+            'settings'
+        ]) f
+    )
+from auth.users u
+cross join(
+    select id
+    from public.companies
+    where name='Storeman Main Company'
+    limit 1
+)c
+where lower(u.email)=lower('ashenafihailay779@gmail.com')
+on conflict(id)
+do update set
+    email=excluded.email,
+    role='admin',
+    status='active',
+    company_id=coalesce(
+        public.profiles.company_id,
+        excluded.company_id
+    ),
+    permissions=excluded.permissions;
+
+-- ============================================================
+-- FUNCTION PRIVILEGES
+-- ============================================================
+
+revoke all on function private.is_active_user() from public;
+revoke all on function private.is_admin() from public;
+revoke all on function private.current_company_id() from public;
+revoke all on function private.current_warehouse_id() from public;
+revoke all on function private.can_feature(text,text) from public;
+revoke all on function private.can_manage_users() from public;
+
+grant execute on function private.is_active_user() to authenticated;
+grant execute on function private.is_admin() to authenticated;
+grant execute on function private.current_company_id() to authenticated;
+grant execute on function private.current_warehouse_id() to authenticated;
+grant execute on function private.can_feature(text,text) to authenticated;
+grant execute on function private.can_manage_users() to authenticated;
+
+-- ============================================================
+-- END
+-- ============================================================
