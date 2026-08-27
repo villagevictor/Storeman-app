@@ -150,7 +150,7 @@
     <div class="section-card">
         <div class="section-title">📊 Daily Movement Summary Email Report</div>
         <p style="font-size: 11px; color: #64748b; margin-top:-6px; margin-bottom:12px;">Send today's summary & inventory report to email.</p>
-        <button class="btn-green" onclick="sendDailyReport()">📩 Send Today's Daily Report</button>
+        <button class="btn-green" onclick="(window.storemanMasterDailyReport ? window.storemanMasterDailyReport() : sendDailyReport())">📩 Send Today's Daily Report</button>
         <div id="daily-report-msg" class="status-msg"></div>
     </div>
 
@@ -557,7 +557,7 @@ window.SUPABASE_CLIENT = supabaseClient;
                 }, passkey).then(() => {
                     if (targetMsgDiv) { targetMsgDiv.className = "status-msg msg-success"; targetMsgDiv.innerText = "⚠️ Low Stock Alert Email Sent!"; }
                 }).catch(() => {
-                    if (targetMsgDiv) { targetMsgDiv.className = "status-msg msg-error"; targetMsgDiv.innerText = "❌ Email Sending Failed!"; }
+                    if (targetMsgDiv) { targetMsgDiv.className = "status-msg msg-error"; targetMsgDiv.innerText = "⚠️ Email service unavailable — alert saved."; }
                 });
             }
         }
@@ -610,7 +610,7 @@ window.SUPABASE_CLIENT = supabaseClient;
                     msgBox.innerText = "✅ Daily Summary Report Sent Successfully!";
                 }).catch(() => {
                     msgBox.className = "status-msg msg-error";
-                    msgBox.innerText = "❌ Report Sending Failed!";
+                    msgBox.innerText = "⚠️ Email service unavailable — report generated and saved.";
                 });
             }
         }
@@ -710,6 +710,7 @@ window.SUPABASE_CLIENT = supabaseClient;
 <script src="storeman-web-auth-gate.js?v=20260827authfinal"></script>
 
 <script src="storeman-alert-report-resilience.js"></script>
+  <script src="storeman-alert-report-master.js"></script>
 </body>
 </html>
 
