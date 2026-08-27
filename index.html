@@ -236,6 +236,13 @@
         const supabaseKey = 'sb_publishable_AN3kSG6xIx38ThIMg4o28w_u6kPIrn2';
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
+// STOREMAN GLOBAL SUPABASE BRIDGE
+// The same client is exposed globally for Auth, Security,
+// Admin, Permissions and multi-device modules.
+window.supabaseClient = supabaseClient;
+window.storemanSupabase = supabaseClient;
+window.SUPABASE_CLIENT = supabaseClient;
+
         let localProducts = JSON.parse(localStorage.getItem('products_store') || '[]');
         let localWarehouses = JSON.parse(localStorage.getItem('warehouses_store') || '[]');
         let localSuppliers = JSON.parse(localStorage.getItem('suppliers_store') || '[]');
