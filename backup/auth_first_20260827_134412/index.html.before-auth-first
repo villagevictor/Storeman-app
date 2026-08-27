@@ -699,9 +699,7 @@
 <!-- STOREMAN FINAL SECURITY -->
 
 
-\n
-<script src="storeman-web-auth-gate.js"></script>
-</body>
+\n</body>
 </html>
 
 <style id="storeman-final-admin-ui-security">
