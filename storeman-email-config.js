@@ -20,5 +20,5 @@ window.STOREMAN_EMAIL_CONFIG = {
    */
   authNotificationTemplateId:
     window.STOREMAN_AUTH_NOTIFICATION_TEMPLATE_ID ||
-    "template_auth_admin"
+    "template_cwrm4pc"
 };

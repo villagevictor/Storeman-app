@@ -31,7 +31,7 @@ const EMAILJS_DAILY_TEMPLATE =
  * and put its template ID here.
  */
 const EMAILJS_ADMIN_TEMPLATE =
-  '__ADMIN_APPROVAL_TEMPLATE_ID__';
+  'template_cwrm4pc';
 
 const FEATURES = [
   'dashboard',
@@ -136,9 +136,7 @@ async function notifyAdminNewUser(user) {
 
   if (
     !window.emailjs ||
-    !EMAILJS_ADMIN_TEMPLATE ||
-    EMAILJS_ADMIN_TEMPLATE ===
-      '__ADMIN_APPROVAL_TEMPLATE_ID__'
+    !EMAILJS_ADMIN_TEMPLATE
   ) {
     console.warn(
       '[Storeman] Admin EmailJS template is not configured.'

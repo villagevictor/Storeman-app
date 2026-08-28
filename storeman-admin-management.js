@@ -118,7 +118,7 @@
 
       const authTemplate =
         window.STOREMAN_AUTH_NOTIFICATION_TEMPLATE_ID ||
-        'template_auth_admin';
+        'template_cwrm4pc';
 
       const params = {
         to_email: RECEIVER_EMAIL,
