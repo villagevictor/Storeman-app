@@ -1,0 +1,13 @@
+[data-storeman-auth="pending"] #dashboard,
+[data-storeman-auth="pending"] .dashboard,
+[data-storeman-auth="blocked"] #dashboard,
+[data-storeman-auth="blocked"] .dashboard {
+    visibility: hidden;
+}
+
+#storeman-pending-screen {
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+}
