@@ -53,6 +53,16 @@
         .receipt-header { text-align: center; border-bottom: 2px dashed #cbd5e1; padding-bottom: 10px; margin-bottom: 10px; }
         .receipt-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
     </style>
+  <link rel="stylesheet" href="storeman-admin-security.css">
+  <script src="storeman-email-config.js"></script>
+  <script src="storeman-admin-management.js"></script>
+  <script src="storeman-auth-notification.js"></script>\n  <script src="storeman-settings-security.js"></script>\n  <script src="storeman-auth-final-guard.js"></script>
+  <script src="storeman-auth-flow-final.js"></script>
+  <link rel="stylesheet" href="storeman-auth-final.css">
+  <script src="storeman-auth-final.js"></script>
+<script src="storeman-login-ui-final.js"></script>
+  <script src="storeman-pending-ui.js"></script>
+  <script src="storeman-admin-final.js"></script>
 </head>
 <body>
 
@@ -140,7 +150,7 @@
     <div class="section-card">
         <div class="section-title">📊 Daily Movement Summary Email Report</div>
         <p style="font-size: 11px; color: #64748b; margin-top:-6px; margin-bottom:12px;">Send today's summary & inventory report to email.</p>
-        <button class="btn-green" onclick="sendDailyReport()">📩 Send Today's Daily Report</button>
+        <button class="btn-green" onclick="(window.storemanMasterDailyReport ? window.storemanMasterDailyReport() : sendDailyReport())">📩 Send Today's Daily Report</button>
         <div id="daily-report-msg" class="status-msg"></div>
     </div>
 
@@ -225,6 +235,13 @@
         const supabaseUrl = 'https://cfnrbgfczqfpmdjzzbia.supabase.co';
         const supabaseKey = 'sb_publishable_AN3kSG6xIx38ThIMg4o28w_u6kPIrn2';
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+// STOREMAN GLOBAL SUPABASE BRIDGE
+// The same client is exposed globally for Auth, Security,
+// Admin, Permissions and multi-device modules.
+window.supabaseClient = supabaseClient;
+window.storemanSupabase = supabaseClient;
+window.SUPABASE_CLIENT = supabaseClient;
 
         let localProducts = JSON.parse(localStorage.getItem('products_store') || '[]');
         let localWarehouses = JSON.parse(localStorage.getItem('warehouses_store') || '[]');
@@ -540,7 +557,7 @@
                 }, passkey).then(() => {
                     if (targetMsgDiv) { targetMsgDiv.className = "status-msg msg-success"; targetMsgDiv.innerText = "⚠️ Low Stock Alert Email Sent!"; }
                 }).catch(() => {
-                    if (targetMsgDiv) { targetMsgDiv.className = "status-msg msg-error"; targetMsgDiv.innerText = "❌ Email Sending Failed!"; }
+                    if (targetMsgDiv) { targetMsgDiv.className = "status-msg msg-error"; targetMsgDiv.innerText = "⚠️ Email service unavailable — alert saved."; }
                 });
             }
         }
@@ -593,7 +610,7 @@
                     msgBox.innerText = "✅ Daily Summary Report Sent Successfully!";
                 }).catch(() => {
                     msgBox.className = "status-msg msg-error";
-                    msgBox.innerText = "❌ Report Sending Failed!";
+                    msgBox.innerText = "⚠️ Email service unavailable — report generated and saved.";
                 });
             }
         }
@@ -683,6 +700,63 @@
         loadSettingsUI();
         renderUI();
     </script>
-<script src="storeman-auth.js"></script>
+
+
+
+<!-- STOREMAN FINAL SECURITY -->
+
+
+\n
+<script src="storeman-web-auth-gate.js?v=20260827authfinal"></script>
+
+<script src="storeman-alert-report-resilience.js"></script>
+  <script src="storeman-alert-report-master.js"></script>
 </body>
 </html>
+
+<style id="storeman-final-admin-ui-security">
+/*
+ * Storeman FINAL UI SECURITY
+ *
+ * User Management / Role / Company / Warehouse /
+ * Permissions are administrator-only.
+ */
+
+[data-admin-only] {
+  display:none;
+}
+
+body.storeman-normal-user
+#storeman-admin-user-management {
+  display:none !important;
+}
+</style>
+
+<script>
+(function(){
+
+  function protectAdminUI(){
+
+    const admin =
+      window.__storemanIsAdmin === true;
+
+    if(admin) return;
+
+    document
+      .querySelectorAll(
+        '[data-admin-only],.admin-only'
+      )
+      .forEach(
+        el => {
+          el.style.display='none';
+        }
+      );
+  }
+
+  setInterval(
+    protectAdminUI,
+    1000
+  );
+
+})();
+</script>
