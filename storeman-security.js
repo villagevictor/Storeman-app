@@ -21,7 +21,7 @@ const EMAILJS_SERVICE_ID =
   'service_ojriqwn';
 
 const EMAILJS_LOW_STOCK_TEMPLATE =
-  'template_um0eics';
+  'template_tbu1wdb';
 
 const EMAILJS_DAILY_TEMPLATE =
   '';
