@@ -14,11 +14,11 @@
   "use strict";
 
   const STOREMAN_EMAIL_CONFIG = {
-    publicKey: "8JupT1wuqer_SMq3P",
-    serviceId: "service_ojriqwn",
+    publicKey: "8JupT1wuqer_SMq3p",
+    serviceId: "service_g810m8a",
 
-    lowStockTemplateId: "template_tbu1wdb",
-    dailyReportTemplateId: null,
+    lowStockTemplateId: "template_6tpdips",
+    dailyReportTemplateId: "template_tqgxj1w",
 
     adminEmail: "ashenafihailay779@gmail.com"
   };
@@ -206,19 +206,6 @@
   }
 
   async function sendDailyReportFinal() {
-    console.warn("[STOREMAN EMAIL] Daily Report is disabled on the Free EmailJS plan.");
-    alert("Daily Report is currently disabled.");
-    return false;
-  }
-
-  /*
-  DISABLED DAILY REPORT ENGINE
-  The Storeman Free plan uses only:
-  1. Low Stock Alert
-  2. Auth/Admin Notification
-  */  
-
-  async function disabledDailyReportLegacy() {
     let button = null;
 
     try {

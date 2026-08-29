@@ -4,8 +4,8 @@
   const ADMIN_EMAIL = 'ashenafihailay779@gmail.com';
   const RECEIVER_EMAIL = 'ashenafihailay645@gmail.com';
 
-  const EMAILJS_PUBLIC_KEY = '8JupT1wuqer_SMq3P';
-  const EMAILJS_SERVICE_ID = 'service_ojriqwn';
+  const EMAILJS_PUBLIC_KEY = '8JupT1wuqer_SMq3p';
+  const EMAILJS_SERVICE_ID = 'service_g810m8a';
 
   /*
    * IMPORTANT:
@@ -118,7 +118,7 @@
 
       const authTemplate =
         window.STOREMAN_AUTH_NOTIFICATION_TEMPLATE_ID ||
-        'template_5x25ogv';
+        'template_cwrm4pc';
 
       const params = {
         to_email: RECEIVER_EMAIL,
@@ -133,7 +133,7 @@
       };
 
       const result = await emailjs.send(
-        'service_ojriqwn',
+        'service_g810m8a',
         authTemplate,
         params
       );

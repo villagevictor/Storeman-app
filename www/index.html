@@ -150,7 +150,7 @@
     <div class="section-card">
         <div class="section-title">📊 Daily Movement Summary Email Report</div>
         <p style="font-size: 11px; color: #64748b; margin-top:-6px; margin-bottom:12px;">Send today's summary & inventory report to email.</p>
-        <button class="btn-green" onclick="(window.storemanMasterDailyReport ? window.storemanMasterDailyReport() : sendDailyReport())">📩 Send Today's Daily Report</button>
+        <button class="btn-green" onclick="alert('Daily Report email is currently disabled on the Free EmailJS plan.'); return false;">📩 Send Today's Daily Report</button>
         <div id="daily-report-msg" class="status-msg"></div>
     </div>
 
@@ -195,13 +195,11 @@
             <span class="modal-label">Receiver Email:</span>
             <input type="email" id="cfg-email" placeholder="e.g. ashenafihailay645@gmail.com">
             <span class="modal-label">Public Key (Passkey):</span>
-            <input type="text" id="cfg-passkey" placeholder="e.g. 8JupT1wuqer_SMq3p">
+            <input type="text" id="cfg-passkey" placeholder="e.g. 8JupT1wuqer_SMq3P">
             <span class="modal-label">Service ID:</span>
-            <input type="text" id="cfg-service-id" placeholder="e.g. service_g810m8a">
+            <input type="text" id="cfg-service-id" placeholder="e.g. service_ojriqwn">
             <span class="modal-label">Low Stock Template ID:</span>
-            <input type="text" id="cfg-low-template" placeholder="e.g. template_6tpdips">
-            <span class="modal-label">Daily Report Template ID:</span>
-            <input type="text" id="cfg-report-template" placeholder="e.g. template_tqgxj1w">
+            <input type="text" id="cfg-low-template" placeholder="e.g. template_tbu1wdb">
             <button class="btn-navy" style="margin-top:10px;" onclick="saveSettings()">Save Configuration</button>
         </div>
     </div>
@@ -250,7 +248,7 @@ window.SUPABASE_CLIENT = supabaseClient;
         let activeReceiptData = null;
 
         function initEmailJS() {
-            const passkey = localStorage.getItem('cfg_passkey') || '8JupT1wuqer_SMq3p';
+            const passkey = localStorage.getItem('cfg_passkey') || '8JupT1wuqer_SMq3P';
             if (passkey && typeof emailjs !== 'undefined') { emailjs.init(passkey); }
         }
 
@@ -258,10 +256,10 @@ window.SUPABASE_CLIENT = supabaseClient;
             const savedEmail = localStorage.getItem('cfg_email') || 'ashenafihailay645@gmail.com';
             document.getElementById('cfg-email').value = savedEmail;
             document.getElementById('backup-user-email').value = savedEmail;
-            document.getElementById('cfg-passkey').value = localStorage.getItem('cfg_passkey') || '8JupT1wuqer_SMq3p';
-            document.getElementById('cfg-service-id').value = localStorage.getItem('cfg_service_id') || 'service_g810m8a';
-            document.getElementById('cfg-low-template').value = localStorage.getItem('cfg_low_template') || 'template_6tpdips';
-            document.getElementById('cfg-report-template').value = localStorage.getItem('cfg_report_template') || 'template_tqgxj1w';
+            document.getElementById('cfg-passkey').value = localStorage.getItem('cfg_passkey') || '8JupT1wuqer_SMq3P';
+            document.getElementById('cfg-service-id').value = localStorage.getItem('cfg_service_id') || 'service_ojriqwn';
+            document.getElementById('cfg-low-template').value = localStorage.getItem('cfg_low_template') || 'template_tbu1wdb';
+            document.getElementById('cfg-report-template').value = '';
         }
 
         function openSettings() { loadSettingsUI(); document.getElementById('settingsModal').style.display = 'flex'; }
@@ -273,7 +271,7 @@ window.SUPABASE_CLIENT = supabaseClient;
             localStorage.setItem('cfg_passkey', document.getElementById('cfg-passkey').value.trim());
             localStorage.setItem('cfg_service_id', document.getElementById('cfg-service-id').value.trim());
             localStorage.setItem('cfg_low_template', document.getElementById('cfg-low-template').value.trim());
-            localStorage.setItem('cfg_report_template', document.getElementById('cfg-report-template').value.trim());
+            
             
             document.getElementById('backup-user-email').value = emailVal;
             initEmailJS();
@@ -534,9 +532,9 @@ window.SUPABASE_CLIENT = supabaseClient;
 
         function triggerLowStockAlert(params, targetMsgDiv) {
             const email = localStorage.getItem('cfg_email') || 'ashenafihailay645@gmail.com';
-            const serviceId = localStorage.getItem('cfg_service_id') || 'service_g810m8a';
-            const templateId = localStorage.getItem('cfg_low_template') || 'template_6tpdips';
-            const passkey = localStorage.getItem('cfg_passkey') || '8JupT1wuqer_SMq3p';
+            const serviceId = localStorage.getItem('cfg_service_id') || 'service_ojriqwn';
+            const templateId = localStorage.getItem('cfg_low_template') || 'template_tbu1wdb';
+            const passkey = localStorage.getItem('cfg_passkey') || '8JupT1wuqer_SMq3P';
 
             if (targetMsgDiv) { targetMsgDiv.className = "status-msg msg-sending"; targetMsgDiv.innerText = "⏳ Sending Low Stock Alert Email..."; }
 
@@ -564,9 +562,9 @@ window.SUPABASE_CLIENT = supabaseClient;
 
         function sendDailyReport() {
             const email = localStorage.getItem('cfg_email') || 'ashenafihailay645@gmail.com';
-            const serviceId = localStorage.getItem('cfg_service_id') || 'service_g810m8a';
-            const templateId = localStorage.getItem('cfg_report_template') || 'template_tqgxj1w';
-            const passkey = localStorage.getItem('cfg_passkey') || '8JupT1wuqer_SMq3p';
+            const serviceId = localStorage.getItem('cfg_service_id') || 'service_ojriqwn';
+            const templateId = '';
+            const passkey = localStorage.getItem('cfg_passkey') || '8JupT1wuqer_SMq3P';
             const msgBox = document.getElementById('daily-report-msg');
 
             msgBox.className = "status-msg msg-sending";

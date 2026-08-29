@@ -16,19 +16,19 @@
   const CONFIG = {
     serviceId:
       localStorage.getItem("cfg_service_id") ||
-      "service_ojriqwn",
+      "service_g810m8a",
 
     lowTemplateId:
       localStorage.getItem("cfg_low_template") ||
-      "template_tbu1wdb",
+      "template_6tpdips",
 
     dailyTemplateId:
-      localStorage.getItem("cfg_report_template_disabled") ||
-      "",
+      localStorage.getItem("cfg_report_template") ||
+      "template_tqgxj1w",
 
     publicKey:
       localStorage.getItem("cfg_public_key") ||
-      "8JupT1wuqer_SMq3P"
+      "8JupT1wuqer_SMq3p"
   };
 
   function emailReady() {

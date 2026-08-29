@@ -9,5 +9,5 @@
     authNotificationTemplateId: "template_5x25ogv"
   });
 
-  console.log("[STOREMAN EMAIL] FINAL CONFIG LOADED");
+  console.log("[STOREMAN EMAIL] Approved EmailJS configuration loaded.");
 })();

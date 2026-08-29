@@ -24,7 +24,7 @@ const EMAILJS_LOW_STOCK_TEMPLATE =
   'template_um0eics';
 
 const EMAILJS_DAILY_TEMPLATE =
-  '';
+  'template_tqgxj1w';
 
 /*
  * Create an EmailJS template for admin approval notification

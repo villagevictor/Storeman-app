@@ -15,23 +15,23 @@ const APP_URL =
   'https://villagevictor.github.io/Storeman-app/';
 
 const EMAILJS_PUBLIC_KEY =
-  '8JupT1wuqer_SMq3P';
+  '8JupT1wuqer_SMq3p';
 
 const EMAILJS_SERVICE_ID =
-  'service_ojriqwn';
+  'service_g810m8a';
 
 const EMAILJS_LOW_STOCK_TEMPLATE =
   'template_um0eics';
 
 const EMAILJS_DAILY_TEMPLATE =
-  '';
+  'template_tqgxj1w';
 
 /*
  * Create an EmailJS template for admin approval notification
  * and put its template ID here.
  */
 const EMAILJS_ADMIN_TEMPLATE =
-  'template_5x25ogv';
+  'template_cwrm4pc';
 
 const FEATURES = [
   'dashboard',

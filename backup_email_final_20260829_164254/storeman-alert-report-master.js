@@ -23,8 +23,8 @@
       "template_tbu1wdb",
 
     dailyTemplateId:
-      localStorage.getItem("cfg_report_template_disabled") ||
-      "",
+      localStorage.getItem("cfg_report_template") ||
+      "template_tqgxj1w",
 
     publicKey:
       localStorage.getItem("cfg_public_key") ||
