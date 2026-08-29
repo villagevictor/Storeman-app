@@ -21,7 +21,7 @@ const EMAILJS_SERVICE_ID =
   'service_g810m8a';
 
 const EMAILJS_LOW_STOCK_TEMPLATE =
-  'template_um0eics';
+  'template_6tpdips';
 
 const EMAILJS_DAILY_TEMPLATE =
   'template_tqgxj1w';
@@ -114,10 +114,6 @@ async function initEmailJS() {
     emailjs.init({
       publicKey: EMAILJS_PUBLIC_KEY
     });
-
-    console.log(
-      '[Storeman] EmailJS initialized successfully.'
-    );
 
     return true;
 

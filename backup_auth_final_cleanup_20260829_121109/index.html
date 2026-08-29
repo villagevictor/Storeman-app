@@ -65,8 +65,6 @@
 <script src="storeman-login-ui-final.js"></script>
   <script src="storeman-pending-ui.js"></script>
   <script src="storeman-admin-final.js"></script>
-  <script src="storeman-auto-stock.js"></script>
-  <link rel="manifest" href="manifest.json">
 </head>
 <body>
 
@@ -714,27 +712,6 @@ window.SUPABASE_CLIENT = supabaseClient;
 
 <script src="storeman-alert-report-resilience.js"></script>
   <script src="storeman-alert-report-master.js"></script>
-
-<script>
-(function () {
-  "use strict";
-
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", function () {
-      navigator.serviceWorker.register("./sw.js")
-        .then(function (registration) {
-          console.log("[Storeman PWA] Service Worker active:",
-            registration.scope);
-        })
-        .catch(function (error) {
-          console.warn("[Storeman PWA] Service Worker registration failed:",
-            error);
-        });
-    });
-  }
-})();
-</script>
-
 </body>
 </html>
 

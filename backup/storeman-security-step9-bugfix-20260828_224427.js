@@ -21,7 +21,7 @@ const EMAILJS_SERVICE_ID =
   'service_g810m8a';
 
 const EMAILJS_LOW_STOCK_TEMPLATE =
-  'template_um0eics';
+  'template_6tpdips';
 
 const EMAILJS_DAILY_TEMPLATE =
   'template_tqgxj1w';
@@ -115,10 +115,6 @@ async function initEmailJS() {
       publicKey: EMAILJS_PUBLIC_KEY
     });
 
-    console.log(
-      '[Storeman] EmailJS initialized successfully.'
-    );
-
     return true;
 
   } catch (err) {
@@ -140,7 +136,9 @@ async function notifyAdminNewUser(user) {
 
   if (
     !window.emailjs ||
-    !EMAILJS_ADMIN_TEMPLATE
+    !EMAILJS_ADMIN_TEMPLATE ||
+    EMAILJS_ADMIN_TEMPLATE ===
+      'template_cwrm4pc'
   ) {
     console.warn(
       '[Storeman] Admin EmailJS template is not configured.'
