@@ -117,7 +117,10 @@
        */
 
       const authTemplate =
+        localStorage.getItem('cfg_auth_template') ||
         window.STOREMAN_AUTH_NOTIFICATION_TEMPLATE_ID ||
+        (window.STOREMAN_EMAIL_CONFIG &&
+         window.STOREMAN_EMAIL_CONFIG.authNotificationTemplateId) ||
         'template_5x25ogv';
 
       const params = {

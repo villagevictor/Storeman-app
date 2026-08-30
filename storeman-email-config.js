@@ -6,7 +6,9 @@
     publicKey: "8JupT1wuqer_SMq3P",
     serviceId: "service_ojriqwn",
     lowStockTemplateId: "template_tbu1wdb",
-    authNotificationTemplateId: "template_5x25ogv"
+    authNotificationTemplateId:
+      localStorage.getItem("cfg_auth_template") ||
+      "template_5x25ogv"
   });
 
   console.log("[STOREMAN EMAIL] FINAL CONFIG LOADED");

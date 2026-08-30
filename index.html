@@ -64,6 +64,7 @@
   <script src="storeman-auth-final.js"></script>
 <script src="storeman-login-ui-final.js"></script>
   <script src="storeman-pending-ui.js"></script>
+  <script src="storeman-web-auth-gate.js?v=20260829authfinal"></script>
   <script src="storeman-admin-final.js"></script>
   <script src="storeman-auto-stock.js"></script>
   <link rel="manifest" href="manifest.json">
@@ -204,6 +205,8 @@
             <input type="text" id="cfg-service-id" placeholder="e.g. service_ojriqwn">
             <span class="modal-label">Low Stock Template ID:</span>
             <input type="text" id="cfg-low-template" placeholder="e.g. template_tbu1wdb">
+            <span class="modal-label">Auth/Admin Notification Template ID:</span>
+            <input type="text" id="cfg-auth-template" placeholder="e.g. template_5x25ogv">
             <button class="btn-navy" style="margin-top:10px;" onclick="saveSettings()">Save Configuration</button>
         </div>
     </div>
@@ -263,6 +266,7 @@ window.SUPABASE_CLIENT = supabaseClient;
             document.getElementById('cfg-passkey').value = localStorage.getItem('cfg_passkey') || '8JupT1wuqer_SMq3P';
             document.getElementById('cfg-service-id').value = localStorage.getItem('cfg_service_id') || 'service_ojriqwn';
             document.getElementById('cfg-low-template').value = localStorage.getItem('cfg_low_template') || 'template_tbu1wdb';
+            document.getElementById('cfg-auth-template').value = localStorage.getItem('cfg_auth_template') || 'template_5x25ogv';
 
         }
 
@@ -275,6 +279,9 @@ window.SUPABASE_CLIENT = supabaseClient;
             localStorage.setItem('cfg_passkey', document.getElementById('cfg-passkey').value.trim());
             localStorage.setItem('cfg_service_id', document.getElementById('cfg-service-id').value.trim());
             localStorage.setItem('cfg_low_template', document.getElementById('cfg-low-template').value.trim());
+            localStorage.setItem('cfg_auth_template', document.getElementById('cfg-auth-template').value.trim());
+            window.STOREMAN_AUTH_NOTIFICATION_TEMPLATE_ID =
+                document.getElementById('cfg-auth-template').value.trim();
 
 
             document.getElementById('backup-user-email').value = emailVal;

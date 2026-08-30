@@ -9,6 +9,8 @@ const ADMIN_EMAIL =
   'ashenafihailay779@gmail.com';
 
 const ADMIN_NOTIFICATION_EMAIL =
+  (window.STOREMAN_EMAIL_CONFIG &&
+   window.STOREMAN_EMAIL_CONFIG.receiverEmail) ||
   'ashenafihailay645@gmail.com';
 
 const APP_URL =
