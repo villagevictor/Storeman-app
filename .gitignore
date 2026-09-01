@@ -21,3 +21,9 @@ app/keystore.properties
 *.email-fix-backup
 *.save
 *.backup
+
+# Storeman local backups
+*.backup
+*.backup_*
+*.backup-*
+backup_*/
