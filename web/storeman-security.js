@@ -55,11 +55,18 @@ const ACTIONS = [
   'delete'
 ];
 
-let client =
-  window.supabaseClient ||
-  (typeof supabaseClient !== 'undefined'
-    ? supabaseClient
-    : null);
+let client = null;
+
+function resolveSupabaseClient() {
+  return (
+    window.supabaseClient ||
+    window.storemanSupabase ||
+    window.SUPABASE_CLIENT ||
+    (typeof supabaseClient !== 'undefined'
+      ? supabaseClient
+      : null)
+  );
+}
 
 let currentUser = null;
 let currentProfile = null;
@@ -1004,6 +1011,14 @@ async function handleSession(session) {
 async function boot() {
 
   createGate();
+
+  /*
+   * Supabase is initialized by index.html before
+   * storeman-security.js boot() executes.
+   * Resolve the global client here instead of
+   * capturing it too early at script evaluation time.
+   */
+  client = resolveSupabaseClient();
 
   if (!client) {
 
