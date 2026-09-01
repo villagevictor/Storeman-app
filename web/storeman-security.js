@@ -1010,7 +1010,24 @@ async function handleSession(session) {
 
 async function boot() {
 
-  createGate();
+  /*
+   * storeman-web-auth-gate.js is the single owner
+   * of the visible authentication gate.
+   *
+   * Security.js still provides:
+   * - signup patch
+   * - EmailJS admin notification
+   * - permissions
+   * - security checks
+   *
+   * Do NOT create a second visible auth gate here.
+   */
+
+  const securityGateDisabled = true;
+
+  if (!securityGateDisabled) {
+    createGate();
+  }
 
   /*
    * Supabase is initialized by index.html before
@@ -1033,21 +1050,25 @@ async function boot() {
 
   await initEmailJS();
 
-  client.auth.onAuthStateChange(
-    (event,session) => {
-
-      setTimeout(
-        () => handleSession(session),
-        0
-      );
-    }
-  );
-
-  const sessionResult =
-    await client.auth.getSession();
-
-  await handleSession(
-    sessionResult.data.session
+  /*
+   * AUTH OWNERSHIP
+   * --------------------------------------------------------
+   * storeman-web-auth-gate.js is the SINGLE owner of:
+   * - visible auth gate
+   * - login
+   * - session detection
+   * - auth state changes
+   * - profile loading
+   * - unlock / pending state
+   *
+   * Security.js must NOT register another auth listener
+   * or perform another getSession() here.
+   *
+   * This prevents duplicate session handling and the
+   * Sign In screen appearing/disappearing too quickly.
+   */
+  console.log(
+    "[Storeman Security] Session handling delegated to web-auth-gate."
   );
 
   /*

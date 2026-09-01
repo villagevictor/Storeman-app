@@ -1353,16 +1353,15 @@
 
         injectCSS();
 
-        createGate();
-
         /*
-         * SHOW LOGIN IMMEDIATELY.
+         * IMPORTANT:
+         * Do NOT show Sign In before checking the existing
+         * Supabase session.
          *
-         * This prevents the exact problem shown
-         * in the screenshot.
+         * Otherwise a valid session briefly sees Sign In
+         * and then immediately unlocks the dashboard.
          */
-
-        showSignIn();
+        createGate();
 
         attachEvents();
 
