@@ -120,9 +120,14 @@ async function initEmailJS() {
 
   try {
 
-    emailjs.init({
-      publicKey: EMAILJS_PUBLIC_KEY
-    });
+    /*
+     * EmailJS browser SDK v3 expects the public key
+     * directly. Keep initialization compatible with
+     * @emailjs/browser@3.
+     */
+    emailjs.init(
+      EMAILJS_PUBLIC_KEY
+    );
 
     console.log(
       '[Storeman] EmailJS initialized successfully.'
@@ -162,12 +167,22 @@ async function notifyAdminNewUser(user) {
 
     await initEmailJS();
 
-    await emailjs.send(
-      EMAILJS_SERVICE_ID,
-      EMAILJS_ADMIN_TEMPLATE,
+    console.log(
+      '[Storeman Email] Sending admin notification...',
       {
-        to_email:
-          ADMIN_NOTIFICATION_EMAIL,
+        service: EMAILJS_SERVICE_ID,
+        template: EMAILJS_ADMIN_TEMPLATE,
+        receiver: ADMIN_NOTIFICATION_EMAIL
+      }
+    );
+
+    const emailResult =
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_ADMIN_TEMPLATE,
+        {
+          to_email:
+            ADMIN_NOTIFICATION_EMAIL,
 
         admin_email:
           ADMIN_NOTIFICATION_EMAIL,
@@ -193,13 +208,14 @@ async function notifyAdminNewUser(user) {
         message:
           'A new Storeman user has registered and is waiting for administrator approval.',
 
-        app_url:
-          APP_URL
-      }
-    );
+          app_url:
+            APP_URL
+        }
+      );
 
     console.log(
-      '[Storeman] Admin notification sent.'
+      '[Storeman] Admin notification sent.',
+      emailResult
     );
 
     return true;
