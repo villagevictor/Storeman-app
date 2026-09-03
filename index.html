@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Complete Storeman ERP & Inventory System</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background: #f1f5f9; margin: 0; padding: 12px; color: #1e293b; }
@@ -165,7 +165,7 @@
         <div class="section-title">☁️ Cloud Database Backup & Restore</div>
         <p style="font-size: 11px; color: #64748b; margin-top:-6px; margin-bottom:12px;">Save data securely to database or restore using your account email.</p>
         <label class="modal-label">Your Account Email:</label>
-        <input type="email" id="backup-user-email" placeholder="e.g. ashenafihailay645@gmail.com">
+        <input type="email" id="backup-user-email" placeholder="e.g. ashenafihailay779@gmail.com">
         <button class="btn-navy" onclick="cloudBackupData()">☁️ Save Backup to Cloud Database</button>
         <button class="btn-amber" onclick="cloudRestoreData()">🔄 Restore Data from Cloud Database</button>
         <div id="cloud-backup-msg" class="status-msg"></div>
@@ -199,7 +199,7 @@
                 <button class="close-btn" onclick="closeSettings()">&times;</button>
             </div>
             <span class="modal-label">Receiver Email:</span>
-            <input type="email" id="cfg-email" placeholder="e.g. ashenafihailay645@gmail.com">
+            <input type="email" id="cfg-email" placeholder="e.g. ashenafihailay779@gmail.com">
             <span class="modal-label">Public Key (Passkey):</span>
             <input type="text" id="cfg-passkey" placeholder="e.g. 8JupT1wuqer_SMq3P">
             <span class="modal-label">Service ID:</span>
@@ -261,7 +261,7 @@ window.SUPABASE_CLIENT = supabaseClient;
         }
 
         function loadSettingsUI() {
-            const savedEmail = localStorage.getItem('cfg_email') || 'ashenafihailay645@gmail.com';
+            const savedEmail = localStorage.getItem('cfg_email') || 'ashenafihailay779@gmail.com';
             document.getElementById('cfg-email').value = savedEmail;
             document.getElementById('backup-user-email').value = savedEmail;
             document.getElementById('cfg-passkey').value = localStorage.getItem('cfg_passkey') || '8JupT1wuqer_SMq3P';
@@ -543,7 +543,7 @@ window.SUPABASE_CLIENT = supabaseClient;
         }
 
         function triggerLowStockAlert(params, targetMsgDiv) {
-            const email = localStorage.getItem('cfg_email') || 'ashenafihailay645@gmail.com';
+            const email = localStorage.getItem('cfg_email') || 'ashenafihailay779@gmail.com';
             const serviceId = localStorage.getItem('cfg_service_id') || 'service_ojriqwn';
             const templateId = localStorage.getItem('cfg_low_template') || 'template_tbu1wdb';
             const passkey = localStorage.getItem('cfg_passkey') || '8JupT1wuqer_SMq3P';
@@ -573,7 +573,7 @@ window.SUPABASE_CLIENT = supabaseClient;
         }
 
         function sendDailyReport() {
-            const email = localStorage.getItem('cfg_email') || 'ashenafihailay645@gmail.com';
+            const email = localStorage.getItem('cfg_email') || 'ashenafihailay779@gmail.com';
             const serviceId = localStorage.getItem('cfg_service_id') || 'service_ojriqwn';
             const templateId = '';
             const passkey = localStorage.getItem('cfg_passkey') || '8JupT1wuqer_SMq3P';
@@ -742,6 +742,7 @@ window.SUPABASE_CLIENT = supabaseClient;
 </script>
 
 <script src="./storeman-backup-fix.js"></script>
+    <script src="storeman-reliability-fix.js"></script>
 </body>
 </html>
 
